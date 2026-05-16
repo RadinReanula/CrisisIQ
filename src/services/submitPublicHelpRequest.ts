@@ -1,8 +1,6 @@
 import type { NeedSubmissionPayload } from '../types';
 import { supabase } from './supabase';
 
-const DEMO_EVENT_ID = 'e1000000-0000-0000-0000-000000000001';
-
 const URGENCY_TO_SCORE: Record<NeedSubmissionPayload['urgency'], number> = {
   low: 2,
   medium: 3,
@@ -19,15 +17,28 @@ function buildLegacyNeedDescription(payload: NeedSubmissionPayload): string {
   ].join('\n');
 }
 
+export interface SubmitPublicHelpRequestResult {
+  error: string | null;
+  needId: string | null;
+}
+
 /**
- * Persists public "Request help" submissions: detailed row in `help_requests`,
- * and a summary row in `needs` for coordinator / triage workflows.
+ * Persists public "Request help" submissions:
+ * - canonical row in `requests` (matches every form field 1:1)
+ * - mirror row in `needs` so coordinator triage / dashboards keep working
+ *
+ * `event_id` is sent only when an active CrisisEvent is provided; passing
+ * a non-existent UUID would violate the FK to `public.events`.
  */
 export async function submitPublicHelpRequest(
   payload: NeedSubmissionPayload,
-): Promise<{ error: string | null }> {
-  const hr = await supabase.from('help_requests').insert({
-    submitter_name: payload.name,
+  eventId?: string | null,
+): Promise<SubmitPublicHelpRequestResult> {
+  const cleanEventId =
+    typeof eventId === 'string' && eventId.length > 0 ? eventId : null;
+
+  const requestRow = {
+    name: payload.name,
     contact: payload.contact,
     need_type: payload.needType,
     location_text: payload.locationText,
@@ -35,29 +46,50 @@ export async function submitPublicHelpRequest(
     lng: payload.lng,
     description: payload.description,
     urgency: payload.urgency,
-    event_id: DEMO_EVENT_ID,
-  });
+    status: 'pending' as const,
+    ...(cleanEventId ? { event_id: cleanEventId } : {}),
+  };
 
-  if (hr.error) {
-    return { error: hr.error.message };
+  const requests = await supabase
+    .from('requests')
+    .insert(requestRow)
+    .select('id')
+    .single();
+
+  if (requests.error || !requests.data?.id) {
+    console.error('[submitPublicHelpRequest] requests insert failed', requests.error);
+    return {
+      error:
+        requests.error?.message ??
+        'Could not save your help request. Please try again.',
+      needId: null,
+    };
   }
 
-  const legacy = await supabase.from('needs').insert({
+  const legacyRow = {
     submitter_name: payload.name,
     lat: payload.lat,
     lng: payload.lng,
     need_type: payload.needType,
     description: buildLegacyNeedDescription(payload),
     urgency_self: URGENCY_TO_SCORE[payload.urgency],
-    status: 'pending',
-    event_id: DEMO_EVENT_ID,
-  });
+    status: 'pending' as const,
+    ...(cleanEventId ? { event_id: cleanEventId } : {}),
+  };
 
-  if (legacy.error) {
+  const legacy = await supabase
+    .from('needs')
+    .insert(legacyRow)
+    .select('id')
+    .single();
+
+  if (legacy.error || !legacy.data?.id) {
+    console.error('[submitPublicHelpRequest] needs mirror insert failed', legacy.error);
     return {
-      error: `${legacy.error.message} (Your request was saved in help_requests, but the coordinator queue could not be updated.)`,
+      error: null,
+      needId: requests.data.id as string,
     };
   }
 
-  return { error: null };
+  return { error: null, needId: legacy.data.id as string };
 }

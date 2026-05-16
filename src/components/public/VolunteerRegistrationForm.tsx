@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { buildVolunteerPasswordFromPhone } from '../../auth/volunteerPassword';
+import {
+  buildVolunteerPasswordFromPhone,
+  volunteerSignInPasswordCandidates,
+} from '../../auth/volunteerPassword';
 import { ensureAuthSessionForUser } from '../../auth/ensureAuthSession';
 import { supabase } from '../../services/supabase';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -387,24 +390,32 @@ export function VolunteerRegistrationForm() {
 
     try {
       const email = formState.email.trim();
-      const password = buildVolunteerPasswordFromPhone(formState.phone.trim());
+      const phoneTrim = formState.phone.trim();
+      const registrationPassword = buildVolunteerPasswordFromPhone(phoneTrim);
+
+      async function trySignInExistingVolunteer(): Promise<string | undefined> {
+        for (const pwd of volunteerSignInPasswordCandidates(phoneTrim)) {
+          const res = await supabase.auth.signInWithPassword({
+            email,
+            password: pwd,
+          });
+          if (!res.error && res.data.user) {
+            return res.data.user.id;
+          }
+        }
+        return undefined;
+      }
 
       let userId = (await supabase.auth.getUser()).data.user?.id;
 
       if (!userId) {
-        const signInRes = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (!signInRes.error && signInRes.data.user) {
-          userId = signInRes.data.user.id;
-        }
+        userId = await trySignInExistingVolunteer();
       }
 
       if (!userId) {
         const signUpRes = await supabase.auth.signUp({
           email,
-          password,
+          password: registrationPassword,
           options: {
             data: {
               full_name: formState.name.trim(),
@@ -424,12 +435,9 @@ export function VolunteerRegistrationForm() {
               signUpRes.error.message,
             )
           ) {
-            const retryIn = await supabase.auth.signInWithPassword({
-              email,
-              password,
-            });
-            if (!retryIn.error && retryIn.data.user) {
-              userId = retryIn.data.user.id;
+            const retryUserId = await trySignInExistingVolunteer();
+            if (retryUserId) {
+              userId = retryUserId;
             } else {
               setSubmitBanner({
                 message:
@@ -478,7 +486,7 @@ export function VolunteerRegistrationForm() {
         supabase,
         userId,
         email,
-        password,
+        phoneTrim,
       );
 
       if (sessionGate.status === 'need_email_confirm') {
@@ -495,6 +503,39 @@ export function VolunteerRegistrationForm() {
           message: sessionGate.message,
           tone: 'error',
         });
+        return;
+      }
+
+      const profileRes = await supabase.from('profiles').upsert(
+        {
+          id: userId,
+          role: 'volunteer',
+          full_name: formState.name.trim(),
+          phone: formState.phone.trim(),
+          email,
+          skills: formState.skills,
+          availability: formState.availability,
+          location_text: formState.locationText,
+          lat: formState.lat,
+          lng: formState.lng,
+        },
+        { onConflict: 'id' },
+      );
+
+      if (profileRes.error) {
+        if (isAuthRateLimitError(profileRes.error.message)) {
+          setSubmitBanner({ message: RATE_LIMIT_SOFT_MESSAGE, tone: 'pause' });
+          return;
+        }
+        if (/permission denied for table|42501/i.test(profileRes.error.message)) {
+          setSubmitBanner({
+            message:
+              'Your account must be signed in (confirmed email) before saving your profile. Confirm the Supabase email link if you have not, use “Already a volunteer?” on the home page to sign in, then complete registration again.',
+            tone: 'pause',
+          });
+          return;
+        }
+        setSubmitBanner({ message: profileRes.error.message, tone: 'error' });
         return;
       }
 

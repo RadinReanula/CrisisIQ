@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { buildVolunteerPasswordFromPhone } from '../auth/volunteerPassword';
+import { volunteerSignInPasswordCandidates } from '../auth/volunteerPassword';
 import { LiveCrisisStats } from '../components/public/LiveCrisisStats';
 import { PublicPageShell } from '../components/public/PublicPageShell';
 import { useAppContext } from '../context/useAppContext';
@@ -121,25 +121,39 @@ function VolunteerAccess() {
     }
 
     setLoading(true);
-    const password = buildVolunteerPasswordFromPhone(trimmedPhone);
 
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email: trimmedEmail,
-      password,
-    });
-    setLoading(false);
+    let session: Awaited<
+      ReturnType<typeof supabase.auth.signInWithPassword>
+    >['data']['session'] | null = null;
+    let lastError: { message: string } | null = null;
 
-    if (signInError) {
-      setError(
-        signInError.message.includes('Invalid login') || signInError.message.includes('Invalid')
-          ? 'Check your email and phone number match registration. The password is generated from your phone digits.'
-          : signInError.message,
-      );
-      return;
+    for (const password of volunteerSignInPasswordCandidates(trimmedPhone)) {
+      const res = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password,
+      });
+      if (res.error) {
+        lastError = res.error;
+      }
+      if (!res.error && res.data.session) {
+        session = res.data.session;
+        break;
+      }
     }
 
-    if (!data.session) {
-      setError('Confirm your email in the message from Supabase, then try again.');
+    setLoading(false);
+
+    if (!session) {
+      const msg = lastError?.message ?? '';
+      const invalid =
+        msg.includes('Invalid login') ||
+        msg.includes('Invalid') ||
+        msg.includes('invalid_credentials');
+      setError(
+        invalid
+          ? 'Check your email matches registration and enter the phone number you signed up with (077… or +94… both work — your password is built from those digits plus “Aa1”, not by pasting the phone field from Supabase).'
+          : msg || 'Could not sign in. Try again.',
+      );
       return;
     }
 
@@ -246,8 +260,7 @@ function VolunteerAccess() {
                 className={VOLUNTEER_INPUT_CLASS}
               />
               <p className="mt-1.5 text-[11px] leading-snug text-slate-500">
-                Your account password is generated from this phone number — it must match what you
-                entered when you registered as a volunteer.
+                Enter the phone you used when registering (077… or +94…). You never type a password — we sign you in using digits-only plus “Aa1” behind the scenes.
               </p>
             </div>
             {error && (

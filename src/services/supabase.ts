@@ -250,6 +250,77 @@ function parseNeedRecord(value: unknown): Need | null {
   };
 }
 
+/** Public `requests` table uses text urgency labels; map to legacy `needs` score. */
+const REQUEST_URGENCY_TO_SELF_SCORE: Record<string, number> = {
+  low: 2,
+  medium: 3,
+  high: 4,
+  critical: 5,
+};
+
+function parsePublicRequestRecord(value: unknown): Need | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const id = readString(value, 'id');
+  const createdAt = readString(value, 'created_at');
+  const name = readString(value, 'name');
+  const needType = readString(value, 'need_type');
+  const description = readString(value, 'description');
+  const status = readString(value, 'status');
+  const lat = readNumber(value, 'lat');
+  const lng = readNumber(value, 'lng');
+  const urgencyLabel = readString(value, 'urgency');
+
+  const urgencySelf =
+    urgencyLabel !== null ? REQUEST_URGENCY_TO_SELF_SCORE[urgencyLabel] ?? null : null;
+
+  if (
+    !id ||
+    !createdAt ||
+    !name ||
+    lat === null ||
+    lng === null ||
+    !description ||
+    !needType ||
+    urgencySelf === null ||
+    !status
+  ) {
+    return null;
+  }
+
+  const needTypes = new Set<Need['need_type']>(['food', 'medical', 'rescue', 'shelter', 'other']);
+  if (!needTypes.has(needType as Need['need_type'])) {
+    return null;
+  }
+
+  const needStatuses = new Set<Need['status']>([
+    'pending',
+    'assigned',
+    'in_progress',
+    'resolved',
+  ]);
+  if (!needStatuses.has(status as Need['status'])) {
+    return null;
+  }
+
+  const eventId = readString(value, 'event_id');
+
+  return {
+    id,
+    created_at: createdAt,
+    submitter_name: name,
+    lat,
+    lng,
+    need_type: needType as Need['need_type'],
+    description,
+    urgency_self: urgencySelf,
+    status: status as Need['status'],
+    event_id: eventId ?? undefined,
+  };
+}
+
 export interface PublicCrisisStats {
   pending: number;
   inProgress: number;
@@ -345,34 +416,53 @@ export interface NeedTrackingInfo {
 
 export async function getNeedForTracking(needId: string): Promise<NeedTrackingInfo | null> {
   try {
-    const { data: needData, error: needError } = await supabase
+    const { data: needData } = await supabase
       .from('needs')
       .select('*')
       .eq('id', needId)
       .maybeSingle();
 
-    if (needError || !needData) {
+    if (needData) {
+      const need = parseNeedRecord(needData);
+      if (need) {
+        let assignmentStatus: string | null = null;
+        const { data: assignmentData } = await supabase
+          .from('assignments')
+          .select('status')
+          .eq('need_id', needId)
+          .order('assigned_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (
+          assignmentData &&
+          typeof assignmentData === 'object' &&
+          'status' in assignmentData
+        ) {
+          const status = (assignmentData as { status: unknown }).status;
+          assignmentStatus = typeof status === 'string' ? status : null;
+        }
+
+        return { need, assignmentStatus };
+      }
+    }
+
+    const { data: requestData } = await supabase
+      .from('requests')
+      .select('*')
+      .eq('id', needId)
+      .maybeSingle();
+
+    if (!requestData) {
       return null;
     }
 
-    const need = parseNeedRecord(needData);
-    if (!need) return null;
-
-    let assignmentStatus: string | null = null;
-    const { data: assignmentData } = await supabase
-      .from('assignments')
-      .select('status')
-      .eq('need_id', needId)
-      .order('assigned_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (assignmentData && typeof assignmentData === 'object' && 'status' in assignmentData) {
-      const status = (assignmentData as { status: unknown }).status;
-      assignmentStatus = typeof status === 'string' ? status : null;
+    const need = parsePublicRequestRecord(requestData);
+    if (!need) {
+      return null;
     }
 
-    return { need, assignmentStatus };
+    return { need, assignmentStatus: null };
   } catch {
     return null;
   }

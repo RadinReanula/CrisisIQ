@@ -1,7 +1,11 @@
 import { useCallback, useId, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AREA_OPTIONS, type AreaId } from '../../lib/areaOptions';
-import type { NeedType, HelpRequestUrgency, NeedSubmissionPayload } from '../../types';
+import type {
+  HelpRequestUrgency,
+  NeedSubmissionPayload,
+  NeedType,
+} from '../../types';
 import { LoadingSpinner } from './LoadingSpinner';
 
 export type { NeedSubmissionPayload } from '../../types';
