@@ -1,18 +1,33 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AssignmentConfirmBar } from '../components/volunteer/AssignmentConfirmBar';
+import { useNavigate } from 'react-router-dom';
+import { formatLocation } from '../components/volunteer/assignmentUtils';
 import { AvailableVolunteersColumn } from '../components/volunteer/AvailableVolunteersColumn';
+import { CoordinatorNavbar } from '../components/volunteer/CoordinatorNavbar';
+import {
+  CoordinatorStatsRow,
+  type CoordinatorStats,
+} from '../components/volunteer/CoordinatorStatsRow';
 import { CoordinatorToast } from '../components/volunteer/CoordinatorToast';
 import { UNASSIGNED_NEED_STATUS } from '../components/volunteer/coordinatorUtils';
 import { UnassignedNeedsColumn } from '../components/volunteer/UnassignedNeedsColumn';
 import { supabase } from '../components/volunteer/supabase';
 import type { Need, Volunteer } from '../types';
 
-const TAILWIND_SCRIPT_ID = 'crisisiq-tailwind-coordinator';
-const TOAST_DURATION_MS = 4000;
+const TOAST_DURATION_MS = 3000;
+
+const INITIAL_STATS: CoordinatorStats = {
+  unassigned: 0,
+  assigned: 0,
+  enRoute: 0,
+  volunteersAvailable: 0,
+};
 
 function CoordinatorPanel() {
+  const navigate = useNavigate();
   const [needs, setNeeds] = useState<Need[]>([]);
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
+  const [stats, setStats] = useState<CoordinatorStats>(INITIAL_STATS);
+  const [coordinatorEmail, setCoordinatorEmail] = useState<string | null>(null);
   const [needsLoading, setNeedsLoading] = useState(true);
   const [volunteersLoading, setVolunteersLoading] = useState(true);
   const [needsError, setNeedsError] = useState<string | null>(null);
@@ -27,23 +42,43 @@ function CoordinatorPanel() {
     variant: 'success' | 'error';
   } | null>(null);
 
-  useEffect(() => {
-    if (document.getElementById(TAILWIND_SCRIPT_ID)) return;
-    const script = document.createElement('script');
-    script.id = TAILWIND_SCRIPT_ID;
-    script.src = 'https://cdn.tailwindcss.com';
-    script.async = true;
-    document.head.appendChild(script);
-    return () => {
-      script.remove();
-    };
-  }, []);
+  const refreshStats = useCallback(
+    async (unassignedCount: number, volunteersCount: number) => {
+      const [assignedRes, enRouteRes] = await Promise.all([
+        supabase
+          .from('needs')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'assigned'),
+        supabase
+          .from('assignments')
+          .select('*', { count: 'exact', head: true })
+          .in('status', ['en_route', 'arrived']),
+      ]);
+
+      setStats({
+        unassigned: unassignedCount,
+        assigned: assignedRes.count ?? 0,
+        enRoute: enRouteRes.count ?? 0,
+        volunteersAvailable: volunteersCount,
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(null), TOAST_DURATION_MS);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    void (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setCoordinatorEmail(user?.email ?? null);
+    })();
+  }, []);
 
   const fetchUnassignedNeeds = useCallback(async () => {
     const { data, error } = await supabase
@@ -53,7 +88,9 @@ function CoordinatorPanel() {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    setNeeds((data ?? []) as Need[]);
+    const rows = (data ?? []) as Need[];
+    setNeeds(rows);
+    return rows.length;
   }, []);
 
   const fetchAvailableVolunteers = useCallback(async () => {
@@ -64,14 +101,17 @@ function CoordinatorPanel() {
       .order('name', { ascending: true });
 
     if (error) throw new Error(error.message);
-    setVolunteers((data ?? []) as Volunteer[]);
+    const rows = (data ?? []) as Volunteer[];
+    setVolunteers(rows);
+    return rows.length;
   }, []);
 
   const loadNeeds = useCallback(async () => {
     setNeedsLoading(true);
     setNeedsError(null);
     try {
-      await fetchUnassignedNeeds();
+      const count = await fetchUnassignedNeeds();
+      await refreshStats(count, volunteers.length);
     } catch (err) {
       setNeedsError(
         err instanceof Error ? err.message : 'Failed to load unassigned needs.'
@@ -79,13 +119,14 @@ function CoordinatorPanel() {
     } finally {
       setNeedsLoading(false);
     }
-  }, [fetchUnassignedNeeds]);
+  }, [fetchUnassignedNeeds, refreshStats, volunteers.length]);
 
   const loadVolunteers = useCallback(async () => {
     setVolunteersLoading(true);
     setVolunteersError(null);
     try {
-      await fetchAvailableVolunteers();
+      const count = await fetchAvailableVolunteers();
+      await refreshStats(needs.length, count);
     } catch (err) {
       setVolunteersError(
         err instanceof Error ? err.message : 'Failed to load volunteers.'
@@ -93,7 +134,7 @@ function CoordinatorPanel() {
     } finally {
       setVolunteersLoading(false);
     }
-  }, [fetchAvailableVolunteers]);
+  }, [fetchAvailableVolunteers, refreshStats, needs.length]);
 
   useEffect(() => {
     void loadNeeds();
@@ -108,7 +149,14 @@ function CoordinatorPanel() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'needs' },
         () => {
-          void fetchUnassignedNeeds();
+          void (async () => {
+            try {
+              const unassigned = await fetchUnassignedNeeds();
+              await refreshStats(unassigned, volunteers.length);
+            } catch {
+              /* keep prior list on transient errors */
+            }
+          })();
         }
       )
       .subscribe();
@@ -116,7 +164,7 @@ function CoordinatorPanel() {
     return () => {
       void supabase.removeChannel(needsChannel);
     };
-  }, [fetchUnassignedNeeds]);
+  }, [fetchUnassignedNeeds, refreshStats, volunteers.length]);
 
   useEffect(() => {
     const volunteersChannel = supabase
@@ -125,7 +173,14 @@ function CoordinatorPanel() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'volunteers' },
         () => {
-          void fetchAvailableVolunteers();
+          void (async () => {
+            try {
+              const available = await fetchAvailableVolunteers();
+              await refreshStats(needs.length, available);
+            } catch {
+              /* keep prior list on transient errors */
+            }
+          })();
         }
       )
       .subscribe();
@@ -133,7 +188,7 @@ function CoordinatorPanel() {
     return () => {
       void supabase.removeChannel(volunteersChannel);
     };
-  }, [fetchAvailableVolunteers]);
+  }, [fetchAvailableVolunteers, refreshStats, needs.length]);
 
   const selectedNeed = needs.find((n) => n.id === selectedNeedId) ?? null;
   const selectedVolunteer =
@@ -198,27 +253,35 @@ function CoordinatorPanel() {
       variant: 'success',
     });
 
-    await Promise.all([fetchUnassignedNeeds(), fetchAvailableVolunteers()]);
+    const unassigned = await fetchUnassignedNeeds();
+    const available = await fetchAvailableVolunteers();
+    await refreshStats(unassigned, available);
   }, [
     selectedNeed,
     selectedVolunteer,
     clearSelection,
     fetchUnassignedNeeds,
     fetchAvailableVolunteers,
+    refreshStats,
   ]);
 
-  return (
-    <main className="min-h-screen bg-slate-100 font-sans text-slate-900">
-      <header className="border-b border-slate-200 bg-white px-4 py-4 shadow-sm">
-        <div className="mx-auto max-w-6xl">
-          <h1 className="text-xl font-bold text-slate-900">Coordinator Panel</h1>
-          <p className="text-sm text-slate-600">
-            Assign available volunteers to unassigned needs
-          </p>
-        </div>
-      </header>
+  const handleSignOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  }, [navigate]);
 
-      <div className="mx-auto grid max-w-6xl gap-4 p-4 lg:grid-cols-2">
+  return (
+    <main className="flex h-screen flex-col overflow-hidden bg-[#0a0f1e] font-sans text-white">
+      <CoordinatorNavbar
+        coordinatorEmail={coordinatorEmail}
+        onSignOut={() => {
+          void handleSignOut();
+        }}
+      />
+
+      <CoordinatorStatsRow stats={stats} />
+
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
         <UnassignedNeedsColumn
           needs={needs}
           loading={needsLoading}
@@ -238,20 +301,19 @@ function CoordinatorPanel() {
           onRetry={() => {
             void loadVolunteers();
           }}
-        />
-      </div>
-
-      {showConfirmBar && selectedNeed && selectedVolunteer && (
-        <AssignmentConfirmBar
-          volunteerName={selectedVolunteer.name}
-          needType={selectedNeed.need_type}
+          showConfirmBar={showConfirmBar}
+          confirmVolunteerName={selectedVolunteer?.name ?? ''}
+          confirmNeedType={selectedNeed?.need_type ?? 'other'}
+          confirmNeedLocation={
+            selectedNeed ? formatLocation(selectedNeed) : ''
+          }
           isAssigning={isAssigning}
-          onConfirm={() => {
+          onConfirmAssign={() => {
             void handleConfirmAssign();
           }}
-          onCancel={clearSelection}
+          onCancelAssign={clearSelection}
         />
-      )}
+      </div>
 
       {toast && (
         <CoordinatorToast
@@ -260,8 +322,6 @@ function CoordinatorPanel() {
           onDismiss={() => setToast(null)}
         />
       )}
-
-      {showConfirmBar && <div className="h-24" aria-hidden />}
     </main>
   );
 }

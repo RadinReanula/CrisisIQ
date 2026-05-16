@@ -142,24 +142,34 @@ export function useTriage(): UseTriageResult {
 
     void triageExistingPendingNeeds();
 
-    const channel = supabase
-      .channel('triage-needs-inserts')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'needs' },
-        (payload) => {
-          const need = payload.new as PendingNeed;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-          if (shouldTriageNeed(need)) {
-            void runTriage(need.id);
-          }
-        },
-      )
-      .subscribe();
+    try {
+      channel = supabase
+        .channel('triage-needs-inserts')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'needs' },
+          (payload) => {
+            const need = payload.new as PendingNeed;
+
+            if (shouldTriageNeed(need)) {
+              void runTriage(need.id);
+            }
+          },
+        )
+        .subscribe();
+    } catch (caughtError) {
+      const message =
+        caughtError instanceof Error ? caughtError.message : 'Realtime triage unavailable';
+      setError(message);
+    }
 
     return () => {
       isMounted = false;
-      void supabase.removeChannel(channel);
+      if (channel) {
+        void supabase.removeChannel(channel);
+      }
     };
   }, [runTriage]);
 

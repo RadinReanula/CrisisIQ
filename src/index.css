@@ -1,0 +1,179 @@
+@keyframes aurora-drift-red {
+  0%,
+  100% {
+    transform: translate(0%, 0%) scale(1);
+    opacity: 0.18;
+  }
+  33% {
+    transform: translate(8%, -6%) scale(1.08);
+    opacity: 0.24;
+  }
+  66% {
+    transform: translate(-5%, 8%) scale(0.95);
+    opacity: 0.16;
+  }
+}
+
+@keyframes aurora-drift-cyan {
+  0%,
+  100% {
+    transform: translate(0%, 0%) scale(1);
+    opacity: 0.18;
+  }
+  40% {
+    transform: translate(-10%, 5%) scale(1.1);
+    opacity: 0.22;
+  }
+  70% {
+    transform: translate(6%, -8%) scale(0.92);
+    opacity: 0.15;
+  }
+}
+
+@keyframes float-particle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes title-underline-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scaleX(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.crisis-aurora-orb-red {
+  animation: aurora-drift-red 14s ease-in-out infinite;
+}
+
+.crisis-aurora-orb-cyan {
+  animation: aurora-drift-cyan 16s ease-in-out infinite;
+}
+
+.crisis-title-underline {
+  animation: title-underline-pulse 2.5s ease-in-out infinite;
+}
+
+.crisis-particle {
+  animation-name: float-particle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.crisis-particle-1 {
+  animation-duration: 4s;
+  animation-delay: 0s;
+}
+.crisis-particle-2 {
+  animation-duration: 4.5s;
+  animation-delay: 0.3s;
+}
+.crisis-particle-3 {
+  animation-duration: 5s;
+  animation-delay: 0.6s;
+}
+.crisis-particle-4 {
+  animation-duration: 5.5s;
+  animation-delay: 0.2s;
+}
+.crisis-particle-5 {
+  animation-duration: 6s;
+  animation-delay: 0.8s;
+}
+.crisis-particle-6 {
+  animation-duration: 6.5s;
+  animation-delay: 1.1s;
+}
+.crisis-particle-7 {
+  animation-duration: 7s;
+  animation-delay: 0.4s;
+}
+.crisis-particle-8 {
+  animation-duration: 7.5s;
+  animation-delay: 1.4s;
+}
+.crisis-particle-9 {
+  animation-duration: 4.2s;
+  animation-delay: 0.9s;
+}
+.crisis-particle-10 {
+  animation-duration: 5.2s;
+  animation-delay: 1.7s;
+}
+.crisis-particle-11 {
+  animation-duration: 6.2s;
+  animation-delay: 0.1s;
+}
+.crisis-particle-12 {
+  animation-duration: 7.2s;
+  animation-delay: 1.2s;
+}
+.crisis-particle-13 {
+  animation-duration: 8s;
+  animation-delay: 0.5s;
+}
+.crisis-particle-14 {
+  animation-duration: 4.8s;
+  animation-delay: 1.9s;
+}
+.crisis-particle-15 {
+  animation-duration: 5.8s;
+  animation-delay: 0.7s;
+}
+.crisis-particle-16 {
+  animation-duration: 6.8s;
+  animation-delay: 1.5s;
+}
+.crisis-particle-17 {
+  animation-duration: 7.8s;
+  animation-delay: 0.35s;
+}
+.crisis-particle-18 {
+  animation-duration: 4.4s;
+  animation-delay: 1.1s;
+}
+.crisis-particle-19 {
+  animation-duration: 5.4s;
+  animation-delay: 1.6s;
+}
+.crisis-particle-20 {
+  animation-duration: 6.4s;
+  animation-delay: 2s;
+}
+
+@keyframes aurora-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(60px, -40px) scale(1.1); }
+  66% { transform: translate(-30px, 60px) scale(0.9); }
+}
+@keyframes aurora-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1.1); }
+  33% { transform: translate(-50px, 50px) scale(0.95); }
+  66% { transform: translate(40px, -60px) scale(1.05); }
+}
+@keyframes float-particle {
+  0%, 100% { transform: translateY(0px); opacity: 0.3; }
+  50% { transform: translateY(-20px); opacity: 0.6; }
+}
+@keyframes draw-check {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
