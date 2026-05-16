@@ -20,6 +20,9 @@ dist-ssr
 # Netlify
 .netlify
 
+# Supabase CLI local metadata (do not commit)
+supabase/.temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

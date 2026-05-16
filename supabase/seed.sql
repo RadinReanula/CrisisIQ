@@ -1,5 +1,9 @@
 -- CrisisIQ Demo Seed Data
 -- 1 event, 12 needs, 6 volunteers, 3 assignments
+--
+-- Prerequisite: volunteer rows reference auth.users (user_id UUIDs below).
+-- Create matching users via Supabase Auth (sign-up or Dashboard) OR adjust user_id values,
+-- otherwise foreign keys will reject this seed.
 
 -- ============================================================
 -- EVENT
