@@ -1,5 +1,8 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom'
+import { AppProvider, useAppContext } from './context/AppContext'
+import { SupabaseProvider } from './context/SupabaseContext'
 
 const PublicSubmit = lazy(() => import('./pages/PublicSubmit'))
 const VolunteerRegister = lazy(() => import('./pages/VolunteerRegister'))
@@ -7,19 +10,64 @@ const VolunteerDashboard = lazy(() => import('./pages/VolunteerDashboard'))
 const OpsMap = lazy(() => import('./pages/OpsMap'))
 const AdminOverview = lazy(() => import('./pages/AdminOverview'))
 
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { user } = useAppContext()
+
+  if (!user) {
+    return <Navigate to="/volunteer" replace />
+  }
+
+  return children
+}
+
+function RequireCoordinator({ children }: { children: ReactNode }) {
+  const { isCoordinator } = useAppContext()
+
+  if (!isCoordinator) {
+    return <Navigate to="/" replace />
+  }
+
+  return children
+}
+
 function App() {
   return (
-    <BrowserRouter>
-      <Suspense fallback={<div className="loading-skeleton">Loading...</div>}>
-        <Routes>
-          <Route path="/" element={<PublicSubmit />} />
-          <Route path="/volunteer/register" element={<VolunteerRegister />} />
-          <Route path="/volunteer/dashboard" element={<VolunteerDashboard />} />
-          <Route path="/ops" element={<OpsMap />} />
-          <Route path="/admin" element={<AdminOverview />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+    <SupabaseProvider>
+      <AppProvider>
+        <BrowserRouter>
+          <Suspense fallback={<div className="loading-skeleton">Loading...</div>}>
+            <Routes>
+              <Route path="/" element={<PublicSubmit />} />
+              <Route path="/volunteer" element={<VolunteerRegister />} />
+              <Route
+                path="/volunteer/dashboard"
+                element={
+                  <RequireAuth>
+                    <VolunteerDashboard />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/ops"
+                element={
+                  <RequireCoordinator>
+                    <OpsMap />
+                  </RequireCoordinator>
+                }
+              />
+              <Route
+                path="/ops/admin"
+                element={
+                  <RequireCoordinator>
+                    <AdminOverview />
+                  </RequireCoordinator>
+                }
+              />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </AppProvider>
+    </SupabaseProvider>
   )
 }
 
