@@ -1,47 +1,14 @@
 import { useCallback, useState } from 'react';
-<<<<<<< Updated upstream
-import {
-  NeedSubmissionForm,
-  type NeedSubmissionPayload,
-} from '../components/public/NeedSubmissionForm';
 import { CrisisEventBanner } from '../components/public/CrisisEventBanner';
-=======
 import { NeedSubmissionForm } from '../components/public/NeedSubmissionForm';
->>>>>>> Stashed changes
 import { PageBackground } from '../components/public/PageBackground';
 import { PublicPageShell } from '../components/public/PublicPageShell';
 import { SubmitSuccess } from '../components/public/SubmitSuccess';
-<<<<<<< Updated upstream
 import { useAppContext } from '../context/AppContext';
-import { supabase } from '../components/public/supabase';
-import '../index.css';
-
-const FALLBACK_EVENT_ID = 'e1000000-0000-0000-0000-000000000001';
-
-type UrgencyLevel = NeedSubmissionPayload['urgency'];
-
-const URGENCY_TO_SCORE: Record<UrgencyLevel, number> = {
-  low: 2,
-  medium: 3,
-  high: 4,
-  critical: 5,
-};
-
-function buildDescription(payload: NeedSubmissionPayload): string {
-  return [
-    `Contact: ${payload.contact}`,
-    `Location note: ${payload.locationText}`,
-    '',
-    payload.description,
-  ].join('\n');
-}
-
-=======
-import type { NeedSubmissionPayload } from '../types';
 import { submitPublicHelpRequest } from '../services/submitPublicHelpRequest';
+import type { NeedSubmissionPayload } from '../types';
 import '../index.css';
 
->>>>>>> Stashed changes
 function PublicSubmit() {
   const { currentEvent } = useAppContext();
   const [view, setView] = useState<'form' | 'success'>('form');
@@ -55,48 +22,22 @@ function PublicSubmit() {
       setIsSubmitting(true);
       setSubmitError(null);
 
-<<<<<<< Updated upstream
-      const eventId = currentEvent?.id ?? FALLBACK_EVENT_ID;
-=======
-    const { error } = await submitPublicHelpRequest(payload);
->>>>>>> Stashed changes
-
-      const { data, error } = await supabase
-        .from('needs')
-        .insert({
-          submitter_name: payload.name,
-          lat: payload.lat,
-          lng: payload.lng,
-          need_type: payload.needType,
-          description: buildDescription(payload),
-          urgency_self: URGENCY_TO_SCORE[payload.urgency],
-          status: 'pending',
-          event_id: eventId,
-        })
-        .select('id')
-        .single();
-
-<<<<<<< Updated upstream
-      setIsSubmitting(false);
-=======
-    if (error) {
-      setSubmitError(
-        error ||
-          'Something went wrong while submitting your request. Please try again.'
+      const { error, needId } = await submitPublicHelpRequest(
+        payload,
+        currentEvent?.id ?? null,
       );
-      return;
-    }
->>>>>>> Stashed changes
 
-      if (error || !data?.id) {
+      setIsSubmitting(false);
+
+      if (error || !needId) {
         setSubmitError(
-          error?.message ||
+          error ??
             'Something went wrong while submitting your request. Please try again.',
         );
         return;
       }
 
-      setSubmittedNeedId(data.id as string);
+      setSubmittedNeedId(needId);
       setView('success');
     },
     [currentEvent?.id],

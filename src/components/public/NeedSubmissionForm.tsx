@@ -1,11 +1,11 @@
 import { useCallback, useId, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-<<<<<<< Updated upstream
 import { AREA_OPTIONS, type AreaId } from '../../lib/areaOptions';
-import type { NeedType } from '../../types';
-=======
-import type { NeedType, HelpRequestUrgency, NeedSubmissionPayload } from '../../types';
->>>>>>> Stashed changes
+import type {
+  HelpRequestUrgency,
+  NeedSubmissionPayload,
+  NeedType,
+} from '../../types';
 import { LoadingSpinner } from './LoadingSpinner';
 
 export type { NeedSubmissionPayload };
@@ -37,22 +37,8 @@ const URGENCY_SELECTED: Record<UrgencyLevel, string> = {
     'border-red-500 bg-red-600/40 text-red-400 shadow-[0_0_16px_rgba(239,68,68,0.45)]',
 };
 
-<<<<<<< Updated upstream
 type LocationMode = 'gps' | 'manual';
 
-export interface NeedSubmissionPayload {
-  name: string;
-  contact: string;
-  needType: NeedType;
-  locationText: string;
-  lat: number;
-  lng: number;
-  description: string;
-  urgency: UrgencyLevel;
-}
-
-=======
->>>>>>> Stashed changes
 export interface NeedSubmissionFormProps {
   isSubmitting: boolean;
   submitError: string | null;

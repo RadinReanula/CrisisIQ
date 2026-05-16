@@ -52,6 +52,13 @@ function RequestStatus() {
           void load();
         },
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'requests', filter: `id=eq.${id}` },
+        () => {
+          void load();
+        },
+      )
       .subscribe();
 
     return () => {
