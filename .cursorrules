@@ -1,0 +1,10 @@
+1. NEVER call the Anthropic API from React components or browser code. ALL Claude API calls go through netlify/functions/ ONLY.
+2. NEVER import directly from @supabase/supabase-js in components. ALL Supabase operations go through src/services/supabase.ts.
+3. NEVER hardcode hex colour values. ALL colours from CSS custom properties defined in src/styles/_tokens.scss.
+4. NEVER use TypeScript 'any'. ALL types defined in src/types/index.ts.
+5. NEVER put business logic in JSX. Extract into functions or custom hooks.
+6. EVERY component that fetches async data MUST implement 3 states: loading (skeleton placeholder), success (real data), error (user-friendly message + retry button).
+7. EVERY Supabase real-time subscription MUST be cleaned up in useEffect's return function.
+8. NEVER expose ANTHROPIC_API_KEY or SUPABASE_SERVICE_ROLE_KEY to the browser. Only VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are browser-safe.
+9. ALL forms must be keyboard accessible and work at 375px mobile viewport — this is a disaster app used on phones.
+10. ALWAYS check if user is coordinator: const isCoordinator = user?.user_metadata?.role === 'coordinator'
