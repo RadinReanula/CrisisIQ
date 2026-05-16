@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { CrisisEventBanner } from '../components/public/CrisisEventBanner';
+import { LiveCrisisStats } from '../components/public/LiveCrisisStats';
+import { PublicPageShell } from '../components/public/PublicPageShell';
 import { useAppContext } from '../context/AppContext';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import { supabase } from '../services/supabase';
 import '../index.css';
 
@@ -37,12 +41,6 @@ const PARTICLES: { id: number; positionClass: string; animClass: string }[] = [
   { id: 19, positionClass: 'left-[48%] top-[58%]', animClass: 'crisis-particle-19' },
   { id: 20, positionClass: 'left-[95%] top-[12%]', animClass: 'crisis-particle-20' },
 ];
-
-const STATS = [
-  { label: '2,847 Needs Resolved', dotClass: 'bg-red-500' },
-  { label: '1,204 Volunteers Active', dotClass: 'bg-cyan-500' },
-  { label: '98.2% Response Rate', dotClass: 'bg-emerald-400' },
-] as const;
 
 function ShieldAlertIcon() {
   return (
@@ -279,10 +277,12 @@ function VolunteerAccess() {
 }
 
 function BackgroundSlideshow() {
+  const reducedMotion = useReducedMotion();
   const [current, setCurrent] = useState(0);
   const [previous, setPrevious] = useState<number | null>(null);
 
   useEffect(() => {
+    if (reducedMotion) return;
     const interval = window.setInterval(() => {
       setCurrent((idx) => {
         setPrevious(idx);
@@ -290,17 +290,19 @@ function BackgroundSlideshow() {
       });
     }, 6000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [reducedMotion]);
 
   useEffect(() => {
-    if (previous === null) return;
+    if (reducedMotion || previous === null) return;
     const timeout = window.setTimeout(() => setPrevious(null), 2200);
     return () => window.clearTimeout(timeout);
-  }, [previous, current]);
+  }, [previous, current, reducedMotion]);
+
+  const imageIndex = reducedMotion ? 0 : current;
 
   return (
     <div className="home-bg-root" aria-hidden>
-      {previous !== null && (
+      {!reducedMotion && previous !== null && (
         <img
           src={BG_IMAGES[previous]}
           alt=""
@@ -308,9 +310,15 @@ function BackgroundSlideshow() {
         />
       )}
       <img
-        src={BG_IMAGES[current]}
+        src={BG_IMAGES[imageIndex]}
         alt=""
-        className={`home-bg-img ${previous !== null ? 'home-bg-img--fade-in' : 'home-bg-img--visible'}`}
+        className={`home-bg-img ${
+          reducedMotion
+            ? 'home-bg-img--visible'
+            : previous !== null
+              ? 'home-bg-img--fade-in'
+              : 'home-bg-img--visible'
+        }`}
       />
       <div className="home-bg-overlay" />
     </div>
@@ -323,7 +331,7 @@ function AboutSection() {
     {
       iconClass: 'text-cyan-400',
       title: 'Real-time Updates',
-      desc: 'Live assignment tracking via Supabase Realtime',
+      desc: 'Track your request live and get volunteer status without refreshing',
       path: 'M3.75 13.5l10.5-6.75M3.75 13.5v6.75h6.75M3.75 13.5L9 9.75m0 0 3-1.5M9 9.75V3.75m0 5.25L12 7.5m0 0 3-1.5M12 7.5V3.75m0 3.75L15 9.75m0 0 3 1.5M15 9.75V3.75',
     },
     {
@@ -502,27 +510,32 @@ function GuidelinesContactSection() {
 
 function Home() {
   const navigate = useNavigate();
+  const { currentEvent } = useAppContext();
+  const reducedMotion = useReducedMotion();
 
   return (
     <main className="relative isolate min-h-screen overflow-x-hidden bg-[#0a0f1e] font-sans text-white">
       <BackgroundSlideshow />
 
-      <div
-        className="pointer-events-none fixed inset-0 z-[1] overflow-hidden"
-        aria-hidden
-      >
-        <div className="crisis-aurora-orb-red absolute -left-32 top-1/4 h-[28rem] w-[28rem] rounded-full bg-red-600 opacity-20 blur-3xl" />
-        <div className="crisis-aurora-orb-cyan absolute -right-24 bottom-1/4 h-[32rem] w-[32rem] rounded-full bg-cyan-500 opacity-20 blur-3xl" />
-        {PARTICLES.map((p) => (
-          <span
-            key={p.id}
-            className={`crisis-particle absolute h-1 w-1 rounded-full bg-white opacity-30 ${p.positionClass} ${p.animClass}`}
-          />
-        ))}
-      </div>
+      {!reducedMotion && (
+        <div
+          className="pointer-events-none fixed inset-0 z-[1] overflow-hidden"
+          aria-hidden
+        >
+          <div className="crisis-aurora-orb-red absolute -left-32 top-1/4 h-[28rem] w-[28rem] rounded-full bg-red-600 opacity-20 blur-3xl" />
+          <div className="crisis-aurora-orb-cyan absolute -right-24 bottom-1/4 h-[32rem] w-[32rem] rounded-full bg-cyan-500 opacity-20 blur-3xl" />
+          {PARTICLES.map((p) => (
+            <span
+              key={p.id}
+              className={`crisis-particle absolute h-1 w-1 rounded-full bg-white opacity-30 ${p.positionClass} ${p.animClass}`}
+            />
+          ))}
+        </div>
+      )}
 
+      <PublicPageShell>
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <header className="py-10 text-center">
+        <header className="pb-4 pt-2 text-center sm:pt-4">
           <ShieldAlertIcon />
           <h1 className="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
             CrisisIQ
@@ -536,7 +549,9 @@ function Home() {
           </p>
         </header>
 
-        <VolunteerAccess />
+        <div className="mx-auto mb-6 max-w-3xl">
+          <CrisisEventBanner event={currentEvent} />
+        </div>
 
         <section className="mx-auto grid w-full max-w-5xl gap-6 md:grid-cols-2 md:gap-8">
           <article
@@ -600,20 +615,16 @@ function Home() {
           </article>
         </section>
 
-        <div className="mx-auto mt-10 flex max-w-5xl flex-col items-center justify-center gap-6 sm:flex-row sm:gap-10">
-          {STATS.map((stat) => (
-            <div
-              key={stat.label}
-              className="flex items-center gap-2.5 text-sm font-light text-slate-400"
-            >
-              <span
-                className={`h-2 w-2 shrink-0 rounded-full ${stat.dotClass} animate-pulse`}
-                aria-hidden
-              />
-              <span>{stat.label}</span>
-            </div>
-          ))}
-        </div>
+        <LiveCrisisStats eventId={currentEvent?.id} className="mx-auto mt-10 max-w-5xl" />
+
+        <Link
+          to="/awareness"
+          className="mx-auto mt-6 block max-w-md text-center text-sm text-cyan-400/90 transition-colors hover:text-cyan-300"
+        >
+          View global situation &amp; external alerts →
+        </Link>
+
+        <VolunteerAccess />
 
         <button
           type="button"
@@ -635,6 +646,7 @@ function Home() {
           </p>
         </footer>
       </div>
+      </PublicPageShell>
     </main>
   );
 }

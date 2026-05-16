@@ -3,6 +3,8 @@ import type { ReactNode } from 'react'
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
 import PublicSubmit from './pages/PublicSubmit'
+import RequestStatus from './pages/RequestStatus'
+import GlobalAwareness from './pages/GlobalAwareness'
 import VolunteerRegister from './pages/VolunteerRegister'
 import VolunteerDashboard from './pages/VolunteerDashboard'
 import CoordinatorPanel from './pages/CoordinatorPanel'
@@ -55,6 +57,8 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/submit" element={<PublicSubmit />} />
+              <Route path="/status/:id" element={<RequestStatus />} />
+              <Route path="/awareness" element={<GlobalAwareness />} />
               <Route path="/volunteer" element={<VolunteerRegister />} />
               <Route path="/volunteer/register" element={<VolunteerRegister />} />
               <Route
