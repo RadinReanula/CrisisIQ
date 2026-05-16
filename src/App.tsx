@@ -3,12 +3,19 @@ import type { ReactNode } from 'react'
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom'
 import { AppProvider, useAppContext } from './context/AppContext'
 import { SupabaseProvider } from './context/SupabaseContext'
+import { useTriage } from './hooks/useTriage'
 
 const PublicSubmit = lazy(() => import('./pages/PublicSubmit'))
 const VolunteerRegister = lazy(() => import('./pages/VolunteerRegister'))
 const VolunteerDashboard = lazy(() => import('./pages/VolunteerDashboard'))
 const OpsMap = lazy(() => import('./pages/OpsMap'))
 const AdminOverview = lazy(() => import('./pages/AdminOverview'))
+
+function BackgroundTriage() {
+  useTriage()
+
+  return null
+}
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user } = useAppContext()
@@ -35,6 +42,7 @@ function App() {
     <SupabaseProvider>
       <AppProvider>
         <BrowserRouter>
+          <BackgroundTriage />
           <Suspense fallback={<div className="loading-skeleton">Loading...</div>}>
             <Routes>
               <Route path="/" element={<PublicSubmit />} />

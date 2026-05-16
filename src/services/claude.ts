@@ -1,62 +1,77 @@
 import type {
-  TriageRequest,
+  Assignment,
+  Need,
   TriageResult,
-  SitrepRequest,
   SitrepResponse,
-  ApiError,
+  Volunteer,
 } from '../types';
 
 const FUNCTIONS_BASE = '/.netlify/functions';
+const TRIAGE_FALLBACK_BRIEF = 'AI triage unavailable. Coordinator review required.';
+const SITREP_FALLBACK = 'Situation report unavailable. Check network connection.';
 
-class ClaudeServiceError extends Error {
-  status: number;
-  details?: string;
+type TriageNeedInput = Pick<Need, 'description' | 'need_type' | 'urgency_self'>;
 
-  constructor(message: string, status: number, details?: string) {
-    super(message);
-    this.name = 'ClaudeServiceError';
-    this.status = status;
-    this.details = details;
-  }
+function fallbackTriageResult(need: TriageNeedInput): TriageResult {
+  return {
+    urgency_ai: need.urgency_self,
+    ai_brief: TRIAGE_FALLBACK_BRIEF,
+    ai_matched_skills: [],
+  };
 }
 
-async function callFunction<T>(endpoint: string, body: unknown): Promise<T> {
-  const url = `${FUNCTIONS_BASE}/${endpoint}`;
-
-  let response: Response;
+export async function triageNeed(
+  need: TriageNeedInput,
+  availableVolunteers: Volunteer[],
+): Promise<TriageResult> {
   try {
-    response = await fetch(url, {
+    const response = await fetch(`${FUNCTIONS_BASE}/claude-triage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        needDescription: need.description,
+        needType: need.need_type,
+        urgencySelf: need.urgency_self,
+        availableVolunteers,
+      }),
     });
+
+    if (!response.ok) {
+      return fallbackTriageResult(need);
+    }
+
+    return (await response.json()) as TriageResult;
   } catch {
-    throw new ClaudeServiceError(
-      'Network error: unable to reach AI service',
-      0
-    );
+    return fallbackTriageResult(need);
   }
+}
 
-  const data: T | ApiError = await response.json();
+export async function generateSitrep(
+  needs: Need[],
+  assignments: Assignment[],
+  volunteers: Volunteer[],
+  eventName: string,
+): Promise<string> {
+  try {
+    const response = await fetch(`${FUNCTIONS_BASE}/claude-sitrep`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        needs,
+        assignments,
+        volunteers,
+        eventName,
+      }),
+    });
 
-  if (!response.ok) {
-    const err = data as ApiError;
-    throw new ClaudeServiceError(
-      err.error || `Request failed with status ${response.status}`,
-      response.status,
-      err.details
-    );
+    if (!response.ok) {
+      return SITREP_FALLBACK;
+    }
+
+    const data = (await response.json()) as SitrepResponse;
+
+    return data.sitrep;
+  } catch {
+    return SITREP_FALLBACK;
   }
-
-  return data as T;
 }
-
-export async function triageNeed(params: TriageRequest): Promise<TriageResult> {
-  return callFunction<TriageResult>('claude-triage', params);
-}
-
-export async function getSitrep(params: SitrepRequest): Promise<SitrepResponse> {
-  return callFunction<SitrepResponse>('claude-sitrep', params);
-}
-
-export { ClaudeServiceError };

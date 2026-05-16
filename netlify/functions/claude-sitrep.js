@@ -1,145 +1,123 @@
-import {
-  handleOptions,
-  jsonResponse,
-  errorResponse,
-  callClaude,
-  parseJsonResponse,
-} from "./utils/anthropic.js";
+const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
+const CORS_HEADERS = {
+  "Content-Type": "application/json",
+  "Access-Control-Allow-Origin": "*",
+};
+const SYSTEM_PROMPT = "You are a disaster response AI. Generate a concise situation report (sitrep) for incident commanders. Be factual, brief, and prioritise actionable insights. Use plain English, no jargon.";
 
-const SYSTEM_PROMPT = `You are a disaster response coordinator AI. Produce a concise situation report for the operations team.
-Respond with ONLY valid JSON in this format:
-{
-  "sitrep": "A 3-4 sentence summary of the overall situation status, key developments, and critical concerns.",
-  "stats": { "total": N, "pending": N, "assigned": N, "resolved": N },
-  "recommendations": ["action item 1", "action item 2", "action item 3"]
+function jsonResponse(statusCode, body) {
+  return {
+    statusCode,
+    headers: CORS_HEADERS,
+    body: JSON.stringify(body),
+  };
 }
-Provide exactly 3-5 actionable recommendations prioritized by urgency. The sitrep should be written in clear, professional emergency-management language.`;
 
-function validateInput(body) {
-  const { eventName, needs } = body;
+function validateBody(body) {
+  if (!body || typeof body !== "object") {
+    return "Request body is required";
+  }
 
-  if (!eventName || typeof eventName !== "string") {
-    return "eventName is required and must be a string";
+  if (!Array.isArray(body.needs)) {
+    return "needs is required";
   }
-  if (!Array.isArray(needs)) {
-    return "needs must be an array";
+
+  if (!Array.isArray(body.assignments)) {
+    return "assignments is required";
   }
+
+  if (!Array.isArray(body.volunteers)) {
+    return "volunteers is required";
+  }
+
+  if (!body.eventName || typeof body.eventName !== "string") {
+    return "eventName is required";
+  }
+
   return null;
 }
 
-function buildUserPrompt(body) {
-  const { eventName, needs, assignments, volunteers } = body;
-
-  const stats = {
-    total: needs.length,
-    pending: needs.filter((n) => n.status === "pending").length,
-    assigned: needs.filter((n) => n.status === "assigned" || n.status === "in_progress").length,
-    resolved: needs.filter((n) => n.status === "resolved").length,
-  };
-
-  const criticalNeeds = needs
-    .filter((n) => (n.urgency_ai || n.urgency_self) >= 4 && n.status === "pending")
-    .slice(0, 5);
-
-  const availableVolunteers = (volunteers || []).filter((v) => v.available);
-  const activeAssignments = (assignments || []).filter((a) => a.status !== "completed");
-
-  let prompt = `EVENT: ${eventName}
-
-STATISTICS:
-- Total needs reported: ${stats.total}
-- Pending (unassigned): ${stats.pending}
-- Assigned/In-progress: ${stats.assigned}
-- Resolved: ${stats.resolved}
-- Available volunteers: ${availableVolunteers.length}
-- Active assignments: ${activeAssignments.length}`;
-
-  if (criticalNeeds.length > 0) {
-    prompt += `\n\nCRITICAL UNRESOLVED NEEDS:`;
-    for (const n of criticalNeeds) {
-      prompt += `\n- [${n.need_type.toUpperCase()}] Urgency ${n.urgency_ai || n.urgency_self}/5: ${n.description.slice(0, 100)}`;
-    }
-  }
-
-  const skillPool = {};
-  for (const v of availableVolunteers) {
-    for (const skill of v.skills || []) {
-      skillPool[skill] = (skillPool[skill] || 0) + 1;
-    }
-  }
-  if (Object.keys(skillPool).length > 0) {
-    prompt += `\n\nAVAILABLE SKILL POOL: ${JSON.stringify(skillPool)}`;
-  }
-
-  return prompt;
+function getUrgency(need) {
+  return need.urgency_ai || need.urgency_self || 0;
 }
 
-function validateSitrepResult(result) {
-  if (typeof result.sitrep !== "string" || result.sitrep.length === 0) {
-    return false;
-  }
-  if (!result.stats || typeof result.stats.total !== "number") {
-    return false;
-  }
-  if (!Array.isArray(result.recommendations) || result.recommendations.length === 0) {
-    return false;
-  }
-  return true;
+function buildCriticalList(needs) {
+  return needs
+    .filter((need) => getUrgency(need) >= 4)
+    .map((need) => ({
+      type: need.need_type,
+      urgency: getUrgency(need),
+      status: need.status,
+      description: need.description,
+    }));
 }
 
-export async function handler(event) {
+exports.handler = async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
-    return handleOptions();
+    return {
+      statusCode: 200,
+      headers: CORS_HEADERS,
+      body: "",
+    };
   }
 
   if (event.httpMethod !== "POST") {
-    return errorResponse("Method not allowed", 405);
-  }
-
-  let body;
-  try {
-    body = JSON.parse(event.body);
-  } catch {
-    return errorResponse("Invalid JSON in request body", 400);
-  }
-
-  const validationError = validateInput(body);
-  if (validationError) {
-    return errorResponse(validationError, 400);
+    return jsonResponse(405, { error: "Method not allowed" });
   }
 
   try {
-    const userPrompt = buildUserPrompt(body);
-    const rawResponse = await callClaude(SYSTEM_PROMPT, userPrompt);
-    const sitrepResult = parseJsonResponse(rawResponse);
+    const body = JSON.parse(event.body || "{}");
+    const validationError = validateBody(body);
 
-    if (!validateSitrepResult(sitrepResult)) {
-      return errorResponse(
-        "AI returned an invalid response format. Please retry.",
-        502,
-        "Sitrep response validation failed"
-      );
+    if (validationError) {
+      return jsonResponse(400, { error: validationError });
     }
 
-    return jsonResponse({
-      sitrep: sitrepResult.sitrep,
-      stats: sitrepResult.stats,
-      recommendations: sitrepResult.recommendations,
+    const { needs, volunteers, eventName } = body;
+    const total = needs.length;
+    const pending = needs.filter((need) => need.status === "pending").length;
+    const assigned = needs.filter((need) => need.status === "assigned" || need.status === "in_progress").length;
+    const resolved = needs.filter((need) => need.status === "resolved").length;
+    const criticalList = buildCriticalList(needs);
+    const activeCount = volunteers.filter((volunteer) => volunteer.available !== false).length;
+    const userMessage = `Event: ${eventName}. Total needs: ${total}. Pending: ${pending}. Assigned: ${assigned}. Resolved: ${resolved}. Critical needs (urgency 4-5): ${JSON.stringify(criticalList)}. Active volunteers: ${activeCount}. Generate a 5-sentence sitrep with current status, critical priorities, resource gaps, and recommended next actions.`;
+
+    const response = await fetch(ANTHROPIC_MESSAGES_URL, {
+      method: "POST",
+      headers: {
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 700,
+        system: SYSTEM_PROMPT,
+        messages: [
+          {
+            role: "user",
+            content: userMessage,
+          },
+        ],
+      }),
     });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`Anthropic API error ${response.status}: ${errorBody}`);
+    }
+
+    const data = await response.json();
+    const sitrep = data.content[0].text;
+
+    return {
+      statusCode: 200,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ sitrep }),
+    };
   } catch (error) {
-    console.error("Claude sitrep error:", error);
-
-    if (error.status === 401) {
-      return errorResponse("AI service authentication failed", 503);
-    }
-    if (error.status === 429) {
-      return errorResponse("AI service rate limited. Please retry in a moment.", 503);
-    }
-
-    return errorResponse(
-      "AI sitrep service unavailable",
-      503,
-      error.message
-    );
+    return jsonResponse(500, {
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
-}
+};
