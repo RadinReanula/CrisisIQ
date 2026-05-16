@@ -28,6 +28,8 @@ export interface Volunteer {
   lng: number;
   skills: VolunteerSkill[];
   available: boolean;
+  /** Persisted when `volunteers.availability` exists; mirrors registration UI. */
+  availability?: 'available' | 'standby';
   active_mission_id?: string;
   phone?: string;
   created_at?: string;

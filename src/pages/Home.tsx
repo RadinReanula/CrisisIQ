@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-import { useNavigate } from 'react-router-dom';
-import '../index.css';
-
-=======
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
@@ -20,7 +15,6 @@ const BG_IMAGES = [
   'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=1920&q=80',
 ];
 
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
 const PARTICLES: { id: number; positionClass: string; animClass: string }[] = [
   { id: 1, positionClass: 'left-[8%] top-[12%]', animClass: 'crisis-particle-1' },
   { id: 2, positionClass: 'left-[22%] top-[28%]', animClass: 'crisis-particle-2' },
@@ -110,8 +104,6 @@ function HeartHandsIcon() {
   );
 }
 
-<<<<<<< HEAD
-=======
 function VolunteerAccess() {
   const navigate = useNavigate();
   const { user } = useAppContext();
@@ -508,22 +500,15 @@ function GuidelinesContactSection() {
   );
 }
 
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
 function Home() {
   const navigate = useNavigate();
 
   return (
-<<<<<<< HEAD
-    <main className="relative min-h-screen overflow-hidden bg-[#0a0f1e] font-sans text-white">
-      <div
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-=======
     <main className="relative isolate min-h-screen overflow-x-hidden bg-[#0a0f1e] font-sans text-white">
       <BackgroundSlideshow />
 
       <div
         className="pointer-events-none fixed inset-0 z-[1] overflow-hidden"
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
         aria-hidden
       >
         <div className="crisis-aurora-orb-red absolute -left-32 top-1/4 h-[28rem] w-[28rem] rounded-full bg-red-600 opacity-20 blur-3xl" />
@@ -536,13 +521,8 @@ function Home() {
         ))}
       </div>
 
-<<<<<<< HEAD
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-10 sm:px-6 lg:px-8">
-        <header className="mb-12 text-center">
-=======
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <header className="py-10 text-center">
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
           <ShieldAlertIcon />
           <h1 className="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
             CrisisIQ
@@ -556,13 +536,9 @@ function Home() {
           </p>
         </header>
 
-<<<<<<< HEAD
-        <section className="mx-auto grid w-full max-w-5xl flex-1 gap-6 md:grid-cols-2 md:gap-8">
-=======
         <VolunteerAccess />
 
         <section className="mx-auto grid w-full max-w-5xl gap-6 md:grid-cols-2 md:gap-8">
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
           <article
             className="group flex cursor-pointer flex-col rounded-2xl border border-red-500/30 bg-[rgba(239,68,68,0.1)] p-8 backdrop-blur-[16px] transition-all duration-300 hover:-translate-y-2 hover:border-red-400/60 hover:shadow-[0_0_40px_rgba(239,68,68,0.25)]"
             onClick={() => navigate('/submit')}
@@ -578,13 +554,8 @@ function Home() {
             <HandRaisedIcon />
             <h2 className="mt-6 text-2xl font-semibold text-white">I Need Help</h2>
             <p className="mt-3 flex-1 font-light leading-relaxed text-slate-300">
-<<<<<<< HEAD
-              Submit an emergency request. Coordinators will dispatch help to your
-              location immediately.
-=======
               Submit an emergency request. Coordinators will dispatch help to your location
               immediately.
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
             </p>
             <button
               type="button"
@@ -613,13 +584,8 @@ function Home() {
             <HeartHandsIcon />
             <h2 className="mt-6 text-2xl font-semibold text-white">I Want to Help</h2>
             <p className="mt-3 flex-1 font-light leading-relaxed text-slate-300">
-<<<<<<< HEAD
-              Register as a volunteer. Receive assignments and coordinate rescue
-              efforts on the ground.
-=======
               Register as a volunteer. Receive assignments and coordinate rescue efforts on the
               ground.
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
             </p>
             <button
               type="button"
@@ -634,11 +600,6 @@ function Home() {
           </article>
         </section>
 
-<<<<<<< HEAD
-        <button
-          type="button"
-          className="mt-10 text-center text-sm font-light text-slate-400 transition-all duration-300 hover:text-white"
-=======
         <div className="mx-auto mt-10 flex max-w-5xl flex-col items-center justify-center gap-6 sm:flex-row sm:gap-10">
           {STATS.map((stat) => (
             <div
@@ -657,29 +618,11 @@ function Home() {
         <button
           type="button"
           className="mx-auto mt-6 block text-center text-sm font-light text-slate-400 transition-all duration-300 hover:text-white"
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
           onClick={() => navigate('/coordinator')}
         >
           Coordinator? Sign in here →
         </button>
 
-<<<<<<< HEAD
-        <footer className="mt-auto pt-12">
-          <div className="flex flex-col items-center justify-center gap-6 border-t border-white/10 pt-8 sm:flex-row sm:gap-10">
-            {STATS.map((stat) => (
-              <div
-                key={stat.label}
-                className="flex items-center gap-2.5 text-sm font-light text-slate-400"
-              >
-                <span
-                  className={`h-2 w-2 shrink-0 rounded-full ${stat.dotClass} animate-pulse`}
-                  aria-hidden
-                />
-                <span>{stat.label}</span>
-              </div>
-            ))}
-          </div>
-=======
         <AboutSection />
         <GuidelinesContactSection />
 
@@ -690,7 +633,6 @@ function Home() {
           <p className="mt-2 text-xs text-red-400/70 animate-pulse">
             In an emergency always call 119 first
           </p>
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
         </footer>
       </div>
     </main>

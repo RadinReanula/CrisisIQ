@@ -177,8 +177,6 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
-<<<<<<< HEAD
-=======
 
 html {
   scroll-behavior: smooth;
@@ -247,4 +245,3 @@ html {
 .animate-fade-in {
   animation: fade-in 0.8s ease-out forwards;
 }
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b

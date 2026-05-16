@@ -4,14 +4,10 @@ import { supabase } from '../../services/supabase';
 import { LoadingSpinner } from './LoadingSpinner';
 import {
   SKILL_OPTIONS,
-<<<<<<< HEAD
-  type VolunteerAvailability,
-=======
   VOLUNTEER_AREA_OPTIONS,
   type VolunteerAvailability,
   type VolunteerAreaId,
   type VolunteerLocationMode,
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
   type VolunteerSkillOption,
 } from './volunteerRegisterConstants';
 
@@ -44,6 +40,22 @@ function buildSignupPassword(phone: string): string {
   const base = digits.length >= 6 ? digits : `${digits}crisisiq`;
   return `${base}Aa1`;
 }
+
+/** Supabase Auth enforces email send limits; password sign-in does not send email. */
+function isAuthRateLimitError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes('rate limit') ||
+    m.includes('too many requests') ||
+    m.includes('over_email_send') ||
+    m.includes('email rate') ||
+    m.includes('429') ||
+    m.includes('for security purposes')
+  );
+}
+
+const RATE_LIMIT_SOFT_MESSAGE =
+  'You’ve reached the short email-send limit from too many new sign-up attempts. Wait about one minute and tap Register again. If you already have an account, we’ll sign you in quietly—no new confirmation email.';
 
 function MapPinIcon() {
   return (
@@ -197,16 +209,24 @@ export function VolunteerRegistrationForm() {
     lng: null,
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitBanner, setSubmitBanner] = useState<{
+    message: string;
+    tone: 'error' | 'pause';
+  } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
-<<<<<<< HEAD
-=======
   const [locationMode, setLocationMode] = useState<VolunteerLocationMode>('gps');
   const [manualCityId, setManualCityId] = useState<VolunteerAreaId | ''>('');
   const [manualLandmark, setManualLandmark] = useState('');
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
+
+  useEffect(() => {
+    if (!submitBanner || submitBanner.tone !== 'pause') return;
+    const id = window.setTimeout(() => {
+      setSubmitBanner(null);
+    }, 14000);
+    return () => window.clearTimeout(id);
+  }, [submitBanner]);
 
   const toggleSkill = useCallback((skill: VolunteerSkillOption) => {
     setFormState((prev) => {
@@ -249,10 +269,6 @@ export function VolunteerRegistrationForm() {
     if (formState.skills.length === 0) {
       errors.skills = 'Select at least one skill.';
     }
-<<<<<<< HEAD
-    if (formState.lat === null || formState.lng === null) {
-      errors.location = 'Use GPS or ensure location coordinates are set.';
-=======
     if (locationMode === 'manual') {
       if (!manualCityId) {
         errors.location = 'Select your city or nearest area.';
@@ -263,16 +279,11 @@ export function VolunteerRegistrationForm() {
       }
     } else if (formState.lat === null || formState.lng === null) {
       errors.location = 'Use GPS to capture your location, or switch to manual entry.';
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
     }
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-<<<<<<< HEAD
-  }, [formState]);
-=======
   }, [formState, locationMode, manualCityId, manualLandmark]);
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
 
   const handleNext = useCallback(() => {
     if (validateStep1()) setStep(2);
@@ -313,8 +324,6 @@ export function VolunteerRegistrationForm() {
     );
   }, []);
 
-<<<<<<< HEAD
-=======
   const applyManualLocation = useCallback(
     (cityId: VolunteerAreaId | '', landmark: string) => {
       if (!cityId) {
@@ -372,9 +381,8 @@ export function VolunteerRegistrationForm() {
     [applyManualLocation, manualCityId]
   );
 
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
   const handleRegisterClick = useCallback(async () => {
-    setSubmitError(null);
+    setSubmitBanner(null);
     setSuccessMessage(null);
 
     if (!validate()) return;
@@ -382,56 +390,110 @@ export function VolunteerRegistrationForm() {
     setIsSubmitting(true);
 
     try {
-      let userId: string | undefined;
+      const email = formState.email.trim();
+      const password = buildSignupPassword(formState.phone.trim());
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      userId = user?.id;
+      let userId = (await supabase.auth.getUser()).data.user?.id;
 
       if (!userId) {
-        const { data: signUpData, error: signUpError } =
-          await supabase.auth.signUp({
-            email: formState.email.trim(),
-            password: buildSignupPassword(formState.phone.trim()),
-            options: {
-              data: {
-                role: 'volunteer',
-                full_name: formState.name.trim(),
-              },
+        const signInRes = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (!signInRes.error && signInRes.data.user) {
+          userId = signInRes.data.user.id;
+        }
+      }
+
+      if (!userId) {
+        const signUpRes = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: formState.name.trim(),
             },
-          });
+          },
+        });
 
-        if (signUpError) {
-          setSubmitError(signUpError.message);
-          return;
+        if (signUpRes.error) {
+          if (isAuthRateLimitError(signUpRes.error.message)) {
+            setSubmitBanner({ message: RATE_LIMIT_SOFT_MESSAGE, tone: 'pause' });
+            return;
+          }
+
+          if (
+            /already (been )?registered|already exists|user already|duplicate|signup/i.test(
+              signUpRes.error.message,
+            )
+          ) {
+            const retryIn = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+            if (!retryIn.error && retryIn.data.user) {
+              userId = retryIn.data.user.id;
+            } else {
+              setSubmitBanner({
+                message:
+                  'This email is already registered. Use the same phone number as before (your password is derived from it), or reset your password.',
+                tone: 'error',
+              });
+              return;
+            }
+          } else {
+            setSubmitBanner({
+              message: signUpRes.error.message,
+              tone: 'error',
+            });
+            return;
+          }
+        } else {
+          userId = signUpRes.data.user?.id ?? undefined;
+          if (!userId) {
+            setSubmitBanner({
+              message:
+                'Check your email to confirm your account, then return here and tap Register again to finish your profile.',
+              tone: 'pause',
+            });
+            return;
+          }
         }
+      }
 
-        userId = signUpData.user?.id;
+      if (!userId) {
+        setSubmitBanner({
+          message: 'Could not verify your session. Try again in a moment.',
+          tone: 'error',
+        });
+        return;
+      }
 
-        if (!userId) {
-          setSubmitError(
-            'Account created. Check your email to confirm, then open this page again to finish registration.'
-          );
-          return;
-        }
+      if (formState.lat === null || formState.lng === null) {
+        setSubmitBanner({
+          message: 'Location coordinates are required.',
+          tone: 'error',
+        });
+        return;
       }
 
       const { error } = await supabase.from('volunteers').insert({
         user_id: userId,
         name: formState.name.trim(),
         phone: formState.phone.trim(),
-        email: formState.email.trim(),
         skills: formState.skills,
+        available: formState.availability === 'available',
         availability: formState.availability,
-        lat: formState.lat ?? null,
-        lng: formState.lng ?? null,
-        status: 'active',
+        lat: formState.lat,
+        lng: formState.lng,
       });
 
       if (error) {
-        setSubmitError(error.message);
+        if (isAuthRateLimitError(error.message)) {
+          setSubmitBanner({ message: RATE_LIMIT_SOFT_MESSAGE, tone: 'pause' });
+          return;
+        }
+        setSubmitBanner({ message: error.message, tone: 'error' });
         return;
       }
 
@@ -443,9 +505,11 @@ export function VolunteerRegistrationForm() {
         navigate('/volunteer/dashboard');
       }, 2000);
     } catch (caught) {
-      setSubmitError(
-        caught instanceof Error ? caught.message : 'Registration failed.'
-      );
+      setSubmitBanner({
+        message:
+          caught instanceof Error ? caught.message : 'Registration failed.',
+        tone: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -477,12 +541,25 @@ export function VolunteerRegistrationForm() {
         Join the Response Network
       </p>
 
-      {submitError && (
+      {submitBanner && (
         <div
-          className="mx-auto mb-4 max-w-[560px] rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-sm text-red-300 backdrop-blur-sm"
-          role="alert"
+          className={`mx-auto mb-4 flex max-w-[560px] gap-3 rounded-xl border px-4 py-3 text-sm backdrop-blur-sm ${
+            submitBanner.tone === 'pause'
+              ? 'border-amber-500/35 bg-amber-950/25 text-amber-100'
+              : 'border-red-500/40 bg-red-950/40 text-red-300'
+          }`}
+          role={submitBanner.tone === 'pause' ? 'status' : 'alert'}
         >
-          {submitError}
+          <p className="min-w-0 flex-1">{submitBanner.message}</p>
+          <button
+            type="button"
+            className="shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-400 underline-offset-2 hover:underline"
+            onClick={() => {
+              setSubmitBanner(null);
+            }}
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -654,12 +731,6 @@ export function VolunteerRegistrationForm() {
               </fieldset>
 
               <div>
-<<<<<<< HEAD
-                <label htmlFor={`${baseId}-location`} className={labelClass}>
-                  Location <span className="text-red-400">*</span>
-                </label>
-                <div className="flex gap-2">
-=======
                 <p className={labelClass}>
                   Location <span className="text-red-400">*</span>
                 </p>
@@ -701,17 +772,12 @@ export function VolunteerRegistrationForm() {
                 {locationMode === 'gps' ? (
                   <div role="tabpanel" className="space-y-2">
                     <div className="flex gap-2">
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
                   <input
                     id={`${baseId}-location`}
                     type="text"
                     readOnly
                     value={formState.locationText}
-<<<<<<< HEAD
-                    placeholder="Use GPS to capture coordinates"
-=======
                     placeholder="Tap Use GPS to capture coordinates"
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
                     className={`${inputClass} min-w-0 flex-1`}
                     aria-invalid={Boolean(fieldErrors.location)}
                   />
@@ -726,14 +792,6 @@ export function VolunteerRegistrationForm() {
                       {locationLoading ? 'GPS…' : 'Use GPS'}
                     </span>
                   </button>
-<<<<<<< HEAD
-                </div>
-                {fieldErrors.location && (
-                  <p className={errorClass}>{fieldErrors.location}</p>
-                )}
-              </div>
-
-=======
                     </div>
                     <p className="text-xs text-slate-500">
                       Allow location access when prompted for accurate map placement.
@@ -811,7 +869,6 @@ export function VolunteerRegistrationForm() {
               </div>
 
 
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
               <button
                 type="button"
                 onClick={() => {

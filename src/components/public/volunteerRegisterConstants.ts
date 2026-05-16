@@ -11,8 +11,6 @@ export const SKILL_OPTIONS = [
 export type VolunteerSkillOption = (typeof SKILL_OPTIONS)[number];
 
 export type VolunteerAvailability = 'available' | 'standby';
-<<<<<<< HEAD
-=======
 
 export type VolunteerLocationMode = 'gps' | 'manual';
 
@@ -30,4 +28,3 @@ export const VOLUNTEER_AREA_OPTIONS = [
 ] as const;
 
 export type VolunteerAreaId = (typeof VOLUNTEER_AREA_OPTIONS)[number]['id'];
->>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
