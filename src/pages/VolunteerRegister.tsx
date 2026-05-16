@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 <<<<<<< Updated upstream
+=======
+>>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
 import { VolunteerRegistrationForm } from '../components/public/VolunteerRegistrationForm';
 import { PageBackground } from '../components/public/PageBackground';
 import '../index.css';
@@ -14,6 +17,7 @@ function VolunteerRegister() {
   );
 }
 
+<<<<<<< HEAD
 =======
 import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
@@ -591,4 +595,6 @@ function VolunteerRegister() {
 }
 
 >>>>>>> Stashed changes
+=======
+>>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
 export default VolunteerRegister;

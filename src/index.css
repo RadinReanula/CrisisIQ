@@ -177,3 +177,74 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+<<<<<<< HEAD
+=======
+
+html {
+  scroll-behavior: smooth;
+}
+
+.home-bg-root {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.home-bg-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home-bg-img--visible {
+  opacity: 0.32;
+  transition: opacity 2.2s ease-in-out;
+}
+
+.home-bg-img--fade-in {
+  opacity: 0;
+  animation: home-bg-fade-in 2.2s ease-in-out forwards;
+}
+
+.home-bg-img--fade-out {
+  opacity: 0.32;
+  animation: home-bg-fade-out 2.2s ease-in-out forwards;
+}
+
+@keyframes home-bg-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.32;
+  }
+}
+
+@keyframes home-bg-fade-out {
+  from {
+    opacity: 0.32;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.home-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(10, 15, 30, 0.68) 0%,
+    rgba(10, 15, 30, 0.58) 50%,
+    rgba(10, 15, 30, 0.72) 100%
+  );
+}
+
+.animate-fade-in {
+  animation: fade-in 0.8s ease-out forwards;
+}
+>>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b

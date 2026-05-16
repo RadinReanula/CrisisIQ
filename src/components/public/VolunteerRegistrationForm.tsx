@@ -4,7 +4,14 @@ import { supabase } from '../../services/supabase';
 import { LoadingSpinner } from './LoadingSpinner';
 import {
   SKILL_OPTIONS,
+<<<<<<< HEAD
   type VolunteerAvailability,
+=======
+  VOLUNTEER_AREA_OPTIONS,
+  type VolunteerAvailability,
+  type VolunteerAreaId,
+  type VolunteerLocationMode,
+>>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
   type VolunteerSkillOption,
 } from './volunteerRegisterConstants';
 
@@ -194,6 +201,12 @@ export function VolunteerRegistrationForm() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
+<<<<<<< HEAD
+=======
+  const [locationMode, setLocationMode] = useState<VolunteerLocationMode>('gps');
+  const [manualCityId, setManualCityId] = useState<VolunteerAreaId | ''>('');
+  const [manualLandmark, setManualLandmark] = useState('');
+>>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
 
   const toggleSkill = useCallback((skill: VolunteerSkillOption) => {
     setFormState((prev) => {
@@ -236,13 +249,30 @@ export function VolunteerRegistrationForm() {
     if (formState.skills.length === 0) {
       errors.skills = 'Select at least one skill.';
     }
+<<<<<<< HEAD
     if (formState.lat === null || formState.lng === null) {
       errors.location = 'Use GPS or ensure location coordinates are set.';
+=======
+    if (locationMode === 'manual') {
+      if (!manualCityId) {
+        errors.location = 'Select your city or nearest area.';
+      } else if (!manualLandmark.trim()) {
+        errors.location = 'Enter a street, landmark, or neighborhood.';
+      } else if (formState.lat === null || formState.lng === null) {
+        errors.location = 'Select your area to set map coordinates.';
+      }
+    } else if (formState.lat === null || formState.lng === null) {
+      errors.location = 'Use GPS to capture your location, or switch to manual entry.';
+>>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
     }
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
+<<<<<<< HEAD
   }, [formState]);
+=======
+  }, [formState, locationMode, manualCityId, manualLandmark]);
+>>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
 
   const handleNext = useCallback(() => {
     if (validateStep1()) setStep(2);
@@ -283,6 +313,66 @@ export function VolunteerRegistrationForm() {
     );
   }, []);
 
+<<<<<<< HEAD
+=======
+  const applyManualLocation = useCallback(
+    (cityId: VolunteerAreaId | '', landmark: string) => {
+      if (!cityId) {
+        setFormState((prev) => ({ ...prev, lat: null, lng: null, locationText: '' }));
+        return;
+      }
+      const city = VOLUNTEER_AREA_OPTIONS.find((c) => c.id === cityId);
+      if (!city) return;
+      const trimmedLandmark = landmark.trim();
+      const locationText = trimmedLandmark
+        ? `${trimmedLandmark}, ${city.label}`
+        : city.label;
+      setFormState((prev) => ({
+        ...prev,
+        lat: city.lat,
+        lng: city.lng,
+        locationText,
+      }));
+    },
+    []
+  );
+
+  const handleLocationModeChange = useCallback(
+    (mode: VolunteerLocationMode) => {
+      setLocationMode(mode);
+      setFieldErrors((prev) => ({ ...prev, location: undefined }));
+      if (mode === 'gps') {
+        setManualCityId('');
+        setManualLandmark('');
+        setFormState((prev) => ({ ...prev, lat: null, lng: null, locationText: '' }));
+      } else {
+        setFormState((prev) => ({ ...prev, lat: null, lng: null, locationText: '' }));
+      }
+    },
+    []
+  );
+
+  const handleManualCityChange = useCallback(
+    (cityId: VolunteerAreaId | '') => {
+      setManualCityId(cityId);
+      applyManualLocation(cityId, manualLandmark);
+      setFieldErrors((prev) => ({ ...prev, location: undefined }));
+    },
+    [applyManualLocation, manualLandmark]
+  );
+
+  const handleManualLandmarkChange = useCallback(
+    (value: string) => {
+      setManualLandmark(value);
+      if (manualCityId) {
+        applyManualLocation(manualCityId, value);
+      }
+      setFieldErrors((prev) => ({ ...prev, location: undefined }));
+    },
+    [applyManualLocation, manualCityId]
+  );
+
+>>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
   const handleRegisterClick = useCallback(async () => {
     setSubmitError(null);
     setSuccessMessage(null);
@@ -564,16 +654,64 @@ export function VolunteerRegistrationForm() {
               </fieldset>
 
               <div>
+<<<<<<< HEAD
                 <label htmlFor={`${baseId}-location`} className={labelClass}>
                   Location <span className="text-red-400">*</span>
                 </label>
                 <div className="flex gap-2">
+=======
+                <p className={labelClass}>
+                  Location <span className="text-red-400">*</span>
+                </p>
+                <div
+                  className="mb-3 grid grid-cols-2 gap-2"
+                  role="tablist"
+                  aria-label="Location entry method"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={locationMode === 'gps'}
+                    onClick={() => handleLocationModeChange('gps')}
+                    disabled={isSubmitting}
+                    className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 ${
+                      locationMode === 'gps'
+                        ? 'border-cyan-400 bg-cyan-600/30 text-cyan-300'
+                        : 'border-slate-600 bg-slate-800/40 text-slate-400 hover:border-slate-500'
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    Use GPS
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={locationMode === 'manual'}
+                    onClick={() => handleLocationModeChange('manual')}
+                    disabled={isSubmitting}
+                    className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 ${
+                      locationMode === 'manual'
+                        ? 'border-cyan-400 bg-cyan-600/30 text-cyan-300'
+                        : 'border-slate-600 bg-slate-800/40 text-slate-400 hover:border-slate-500'
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    Enter manually
+                  </button>
+                </div>
+
+                {locationMode === 'gps' ? (
+                  <div role="tabpanel" className="space-y-2">
+                    <div className="flex gap-2">
+>>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
                   <input
                     id={`${baseId}-location`}
                     type="text"
                     readOnly
                     value={formState.locationText}
+<<<<<<< HEAD
                     placeholder="Use GPS to capture coordinates"
+=======
+                    placeholder="Tap Use GPS to capture coordinates"
+>>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
                     className={`${inputClass} min-w-0 flex-1`}
                     aria-invalid={Boolean(fieldErrors.location)}
                   />
@@ -588,12 +726,92 @@ export function VolunteerRegistrationForm() {
                       {locationLoading ? 'GPS…' : 'Use GPS'}
                     </span>
                   </button>
+<<<<<<< HEAD
                 </div>
                 {fieldErrors.location && (
                   <p className={errorClass}>{fieldErrors.location}</p>
                 )}
               </div>
 
+=======
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Allow location access when prompted for accurate map placement.
+                    </p>
+                  </div>
+                ) : (
+                  <div role="tabpanel" className="space-y-3">
+                    <div>
+                      <label htmlFor={`${baseId}-manual-city`} className="mb-1 block text-xs text-slate-300">
+                        City / nearest area <span className="text-red-400">*</span>
+                      </label>
+                      <div className="relative">
+                        <select
+                          id={`${baseId}-manual-city`}
+                          value={manualCityId}
+                          onChange={(e) =>
+                            handleManualCityChange(e.target.value as VolunteerAreaId | '')
+                          }
+                          disabled={isSubmitting}
+                          className={`${inputClass} appearance-none pr-10`}
+                          aria-invalid={Boolean(fieldErrors.location)}
+                        >
+                          <option value="" className="bg-slate-900">
+                            Select your area
+                          </option>
+                          {VOLUNTEER_AREA_OPTIONS.map((area) => (
+                            <option key={area.id} value={area.id} className="bg-slate-900">
+                              {area.label}
+                            </option>
+                          ))}
+                        </select>
+                        <svg
+                          className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          aria-hidden
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor={`${baseId}-manual-landmark`} className="mb-1 block text-xs text-slate-300">
+                        Street, landmark, or neighborhood <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        id={`${baseId}-manual-landmark`}
+                        type="text"
+                        value={manualLandmark}
+                        onChange={(e) => handleManualLandmarkChange(e.target.value)}
+                        disabled={isSubmitting}
+                        placeholder="e.g. Near Wellawatte junction"
+                        className={inputClass}
+                        aria-invalid={Boolean(fieldErrors.location)}
+                      />
+                    </div>
+                    {formState.locationText && formState.lat !== null && formState.lng !== null && (
+                      <p className="text-xs text-cyan-400/90">
+                        Map pin: {formState.locationText} ({formState.lat.toFixed(4)},{' '}
+                        {formState.lng.toFixed(4)})
+                      </p>
+                    )}
+                    <p className="text-xs text-slate-500">
+                      No GPS needed — we use your area center for dispatch until coordinators
+                      confirm exact placement.
+                    </p>
+                  </div>
+                )}
+
+                {fieldErrors.location && (
+                  <p className={`${errorClass} mt-2`}>{fieldErrors.location}</p>
+                )}
+              </div>
+
+
+>>>>>>> a8e3a1b2155b2765503d2e073b0842895c8d039b
               <button
                 type="button"
                 onClick={() => {
