@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom'
+import Home from './pages/Home'
 import PublicSubmit from './pages/PublicSubmit'
 import VolunteerRegister from './pages/VolunteerRegister'
 import VolunteerDashboard from './pages/VolunteerDashboard'
@@ -44,9 +45,15 @@ function App() {
       <AppProvider>
         <BrowserRouter>
           <BackgroundTriage />
-          <Suspense fallback={<div className="loading-skeleton">Loading...</div>}>
+          <Suspense
+            fallback={
+              <div className="flex min-h-screen items-center justify-center bg-[#0a0f1e] font-sans text-slate-400">
+                Loading…
+              </div>
+            }
+          >
             <Routes>
-              <Route path="/" element={<PublicSubmit />} />
+              <Route path="/" element={<Home />} />
               <Route path="/submit" element={<PublicSubmit />} />
               <Route path="/volunteer" element={<VolunteerRegister />} />
               <Route path="/volunteer/register" element={<VolunteerRegister />} />
@@ -83,6 +90,7 @@ function App() {
                 }
               />
               <Route path="/admin" element={<Navigate to="/ops/admin" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
         </BrowserRouter>

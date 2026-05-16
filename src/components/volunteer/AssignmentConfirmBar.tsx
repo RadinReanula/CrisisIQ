@@ -4,7 +4,9 @@ import { formatNeedType } from './coordinatorUtils';
 interface AssignmentConfirmBarProps {
   volunteerName: string;
   needType: NeedType;
+  needLocation: string;
   isAssigning: boolean;
+  visible: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -12,32 +14,46 @@ interface AssignmentConfirmBarProps {
 export function AssignmentConfirmBar({
   volunteerName,
   needType,
+  needLocation,
   isAssigning,
+  visible,
   onConfirm,
   onCancel,
 }: AssignmentConfirmBarProps) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white px-4 py-4 shadow-lg">
-      <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-medium text-slate-800">
-          Assign {volunteerName} to {formatNeedType(needType)}
+    <div
+      className={`absolute inset-x-0 bottom-0 z-10 border-t border-cyan-500/20 p-4 transition-transform duration-300 ease-out ${
+        visible ? 'translate-y-0' : 'translate-y-full pointer-events-none'
+      }`}
+      role="region"
+      aria-label="Confirm assignment"
+      aria-hidden={!visible}
+    >
+      <div className="rounded-2xl border border-cyan-500/40 bg-slate-900/95 p-4 backdrop-blur-md">
+        <p className="text-sm text-slate-400">
+          Assign:{' '}
+          <span className="font-semibold text-cyan-400">{volunteerName}</span>
+          <span className="mx-2 text-slate-500">→ to →</span>
+          <span className="font-semibold text-white">{formatNeedType(needType)}</span>
         </p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isAssigning}
-            className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:opacity-60 sm:flex-none"
-          >
-            Cancel
-          </button>
+        <p className="mt-1 truncate text-sm text-slate-400">{needLocation}</p>
+
+        <div className="mt-4 flex gap-2">
           <button
             type="button"
             onClick={onConfirm}
             disabled={isAssigning}
-            className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-blue-400 sm:flex-none"
+            className="flex-1 rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-300 hover:bg-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isAssigning ? 'Assigning…' : `Assign ${volunteerName} to ${formatNeedType(needType)}`}
+            {isAssigning ? 'Assigning…' : 'Confirm Assignment'}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isAssigning}
+            className="rounded-xl border border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-400 transition-all duration-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:opacity-60"
+          >
+            Cancel
           </button>
         </div>
       </div>

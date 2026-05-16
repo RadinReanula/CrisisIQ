@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AssignmentList } from '../components/volunteer/AssignmentList';
 import type { AssignmentWithNeed } from '../components/volunteer/assignmentUtils';
 import { VolunteerTopBar } from '../components/volunteer/VolunteerTopBar';
 import { supabase } from '../components/volunteer/supabase';
 import type { Volunteer } from '../types';
 
-const TAILWIND_SCRIPT_ID = 'crisisiq-tailwind-volunteer';
-
 function VolunteerDashboard() {
+  const navigate = useNavigate();
   const [volunteer, setVolunteer] = useState<Volunteer | null>(null);
+  const [authDisplayName, setAuthDisplayName] = useState<string | null>(null);
   const [assignments, setAssignments] = useState<AssignmentWithNeed[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,18 +18,6 @@ function VolunteerDashboard() {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const volunteerIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (document.getElementById(TAILWIND_SCRIPT_ID)) return;
-    const script = document.createElement('script');
-    script.id = TAILWIND_SCRIPT_ID;
-    script.src = 'https://cdn.tailwindcss.com';
-    script.async = true;
-    document.head.appendChild(script);
-    return () => {
-      script.remove();
-    };
-  }, []);
 
   const fetchVolunteerProfile = useCallback(async (userId: string) => {
     const { data, error: volError } = await supabase
@@ -78,8 +67,14 @@ function VolunteerDashboard() {
         setAuthError('You must be signed in to view your dashboard.');
         setVolunteer(null);
         setAssignments([]);
+        setAuthDisplayName(null);
         return;
       }
+
+      const meta = user.user_metadata as { full_name?: string } | undefined;
+      setAuthDisplayName(
+        meta?.full_name?.trim() || user.email?.split('@')[0] || null
+      );
 
       const volunteerId = await fetchVolunteerProfile(user.id);
       await fetchAssignments(volunteerId);
@@ -222,10 +217,15 @@ function VolunteerDashboard() {
     [fetchAssignments]
   );
 
+  const handleSignOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    navigate('/volunteer');
+  }, [navigate]);
+
   if (authError) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-        <p className="max-w-sm text-center text-sm text-red-700" role="alert">
+      <main className="flex min-h-screen items-center justify-center bg-[#0a0f1e] px-4">
+        <p className="max-w-sm text-center text-sm text-red-400" role="alert">
           {authError}
         </p>
       </main>
@@ -233,14 +233,17 @@ function VolunteerDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 font-sans text-slate-900">
+    <main className="min-h-screen bg-[#0a0f1e] font-sans text-white">
       {volunteer && (
         <VolunteerTopBar
-          name={volunteer.name}
+          authDisplayName={authDisplayName ?? volunteer.name}
           available={volunteer.available}
           isTogglingAvailability={isTogglingAvailability}
           onToggleAvailability={() => {
             void handleToggleAvailability();
+          }}
+          onSignOut={() => {
+            void handleSignOut();
           }}
         />
       )}

@@ -26,10 +26,10 @@ export function getUrgencyTier(score: number): UrgencyTier {
 }
 
 export const URGENCY_BADGE_CLASS: Record<UrgencyTier, string> = {
-  critical: 'bg-red-100 text-red-800 border-red-200',
-  high: 'bg-orange-100 text-orange-800 border-orange-200',
-  medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  low: 'bg-green-100 text-green-800 border-green-200',
+  critical: 'border-red-500 bg-red-600/30 text-red-400',
+  high: 'border-orange-500 bg-orange-600/30 text-orange-400',
+  medium: 'border-yellow-500 bg-yellow-600/30 text-yellow-400',
+  low: 'border-green-500 bg-green-600/30 text-green-400',
 };
 
 export const URGENCY_LABEL: Record<UrgencyTier, string> = {
@@ -71,8 +71,46 @@ export function getStatusChipLabel(status: AssignmentStatus): string {
 }
 
 export const STATUS_CHIP_CLASS: Record<string, string> = {
-  assigned: 'bg-blue-100 text-blue-800',
-  en_route: 'bg-violet-100 text-violet-800',
-  arrived: 'bg-violet-100 text-violet-800',
-  completed: 'bg-slate-200 text-slate-700',
+  assigned: 'border-blue-500 bg-blue-600/30 text-blue-300',
+  en_route: 'border-orange-500 bg-orange-600/30 text-orange-300 animate-pulse',
+  arrived: 'border-orange-500 bg-orange-600/30 text-orange-300 animate-pulse',
+  completed: 'border-green-500 bg-green-600/30 text-green-300',
+};
+
+export function formatTimeSinceAssigned(assignedAt: string): string {
+  const ms = Date.now() - new Date(assignedAt).getTime();
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 1) return 'Assigned just now';
+  if (minutes < 60) return `Assigned ${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Assigned ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `Assigned ${days}d ago`;
+}
+
+export function computeDashboardStats(assignments: AssignmentWithNeed[]) {
+  const assigned = assignments.filter((a) => a.status === 'assigned').length;
+  const enRoute = assignments.filter(
+    (a) => a.status === 'en_route' || a.status === 'arrived'
+  ).length;
+  const today = new Date().toDateString();
+  const completedToday = assignments.filter((a) => {
+    if (a.status !== 'completed' || !a.completed_at) return false;
+    return new Date(a.completed_at).toDateString() === today;
+  }).length;
+
+  return {
+    assigned,
+    enRoute,
+    completedToday,
+    responseRate: '98%',
+  };
+}
+
+export const NEED_TYPE_EMOJI: Record<NeedType, string> = {
+  food: '🍽',
+  medical: '🏥',
+  shelter: '🏠',
+  rescue: '🚨',
+  other: '📋',
 };

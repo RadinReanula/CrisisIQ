@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   NeedSubmissionForm,
   type NeedSubmissionPayload,
 } from '../components/public/NeedSubmissionForm';
+import { PageBackground } from '../components/public/PageBackground';
 import { SubmitSuccess } from '../components/public/SubmitSuccess';
 import { supabase } from '../components/public/supabase';
+import '../index.css';
 
-const TAILWIND_SCRIPT_ID = 'crisisiq-tailwind-cdn';
 const DEMO_EVENT_ID = 'e1000000-0000-0000-0000-000000000001';
 
 type UrgencyLevel = NeedSubmissionPayload['urgency'];
@@ -32,20 +33,6 @@ function PublicSubmit() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [formKey, setFormKey] = useState(0);
-
-  useEffect(() => {
-    if (document.getElementById(TAILWIND_SCRIPT_ID)) return;
-
-    const script = document.createElement('script');
-    script.id = TAILWIND_SCRIPT_ID;
-    script.src = 'https://cdn.tailwindcss.com';
-    script.async = true;
-    document.head.appendChild(script);
-
-    return () => {
-      script.remove();
-    };
-  }, []);
 
   const handleSubmit = useCallback(async (payload: NeedSubmissionPayload) => {
     setIsSubmitting(true);
@@ -82,19 +69,22 @@ function PublicSubmit() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {view === 'success' ? (
-        <SubmitSuccess onSubmitAnother={handleSubmitAnother} />
-      ) : (
-        <NeedSubmissionForm
-          key={formKey}
-          isSubmitting={isSubmitting}
-          submitError={submitError}
-          onSubmit={(payload) => {
-            void handleSubmit(payload);
-          }}
-        />
-      )}
+    <main className="relative min-h-screen overflow-hidden bg-[#0a0f1e] font-sans text-white">
+      <PageBackground />
+      <div className="relative z-10">
+        {view === 'success' ? (
+          <SubmitSuccess onSubmitAnother={handleSubmitAnother} />
+        ) : (
+          <NeedSubmissionForm
+            key={formKey}
+            isSubmitting={isSubmitting}
+            submitError={submitError}
+            onSubmit={(payload) => {
+              void handleSubmit(payload);
+            }}
+          />
+        )}
+      </div>
     </main>
   );
 }

@@ -1,47 +1,72 @@
 interface VolunteerTopBarProps {
-  name: string;
+  authDisplayName: string | null;
   available: boolean;
   isTogglingAvailability: boolean;
   onToggleAvailability: () => void;
+  onSignOut: () => void;
 }
 
 export function VolunteerTopBar({
-  name,
+  authDisplayName,
   available,
   isTogglingAvailability,
   onToggleAvailability,
+  onSignOut,
 }: VolunteerTopBarProps) {
   return (
-    <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3 shadow-sm">
-      <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            Volunteer
-          </p>
-          <h1 className="truncate text-lg font-semibold text-slate-900">{name}</h1>
+    <header className="sticky top-0 z-20 border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-md">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="text-lg font-bold text-red-500">CrisisIQ</span>
+          <span className="hidden text-sm text-slate-400 sm:inline">
+            Volunteer Portal
+          </span>
         </div>
-        <button
-          type="button"
-          onClick={onToggleAvailability}
-          disabled={isTogglingAvailability}
-          className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
-            available
-              ? 'bg-green-100 text-green-800 ring-green-500 hover:bg-green-200 focus:ring-green-500'
-              : 'bg-slate-200 text-slate-600 ring-slate-400 hover:bg-slate-300 focus:ring-slate-400'
-          }`}
-          aria-pressed={available}
-          aria-label={
-            available
-              ? 'Available for missions. Click to go on standby.'
-              : 'On standby. Click to mark available.'
-          }
-        >
-          {isTogglingAvailability
-            ? 'Updating…'
-            : available
-              ? 'Available'
-              : 'Standby'}
-        </button>
+
+        <p className="hidden max-w-[200px] truncate text-center text-sm font-medium text-white md:block lg:max-w-xs">
+          {authDisplayName ?? 'Volunteer'}
+        </p>
+
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={onToggleAvailability}
+            disabled={isTogglingAvailability}
+            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0a0f1e] disabled:cursor-not-allowed disabled:opacity-60 ${
+              available
+                ? 'border-green-500 bg-green-600/20 text-green-400 focus:ring-green-500'
+                : 'border-slate-600 bg-slate-700/50 text-slate-300 focus:ring-slate-500'
+            }`}
+            aria-pressed={available}
+            aria-label={
+              available
+                ? 'Available for missions. Click to go on standby.'
+                : 'On standby. Click to mark available.'
+            }
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                available
+                  ? 'animate-pulse bg-green-400'
+                  : 'bg-slate-500'
+              }`}
+              aria-hidden
+            />
+            {isTogglingAvailability
+              ? 'Updating…'
+              : available
+                ? 'Available'
+                : 'Standby'}
+          </button>
+
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="text-sm text-slate-400 transition-all duration-300 hover:text-white focus:outline-none focus:underline"
+          >
+            Sign out
+          </button>
+        </div>
       </div>
     </header>
   );
