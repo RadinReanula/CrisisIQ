@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { buildVolunteerPasswordFromPhone } from '../../auth/volunteerPassword';
+import { ensureAuthSessionForUser } from '../../auth/ensureAuthSession';
 import { supabase } from '../../services/supabase';
 import { LoadingSpinner } from './LoadingSpinner';
 import {
@@ -34,12 +36,6 @@ const inputClass =
   'w-full rounded-xl border border-slate-600 bg-slate-800/60 p-3 text-white transition-all duration-300 placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 disabled:cursor-not-allowed disabled:opacity-60';
 const labelClass = 'mb-1 block text-sm text-white';
 const errorClass = 'mt-1 text-sm text-red-400';
-
-function buildSignupPassword(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  const base = digits.length >= 6 ? digits : `${digits}crisisiq`;
-  return `${base}Aa1`;
-}
 
 /** Supabase Auth enforces email send limits; password sign-in does not send email. */
 function isAuthRateLimitError(message: string): boolean {
@@ -391,7 +387,7 @@ export function VolunteerRegistrationForm() {
 
     try {
       const email = formState.email.trim();
-      const password = buildSignupPassword(formState.phone.trim());
+      const password = buildVolunteerPasswordFromPhone(formState.phone.trim());
 
       let userId = (await supabase.auth.getUser()).data.user?.id;
 
@@ -412,6 +408,7 @@ export function VolunteerRegistrationForm() {
           options: {
             data: {
               full_name: formState.name.trim(),
+              phone: formState.phone.trim(),
             },
           },
         });
@@ -477,20 +474,55 @@ export function VolunteerRegistrationForm() {
         return;
       }
 
-      const { error } = await supabase.from('volunteers').insert({
-        user_id: userId,
-        name: formState.name.trim(),
-        phone: formState.phone.trim(),
-        skills: formState.skills,
-        available: formState.availability === 'available',
-        availability: formState.availability,
-        lat: formState.lat,
-        lng: formState.lng,
-      });
+      const sessionGate = await ensureAuthSessionForUser(
+        supabase,
+        userId,
+        email,
+        password,
+      );
+
+      if (sessionGate.status === 'need_email_confirm') {
+        setSubmitBanner({
+          message:
+            'Open the confirmation link Supabase sent to your email, then come back and tap Register again. Your profile can only be saved after your account is confirmed and signed in.',
+          tone: 'pause',
+        });
+        return;
+      }
+
+      if (sessionGate.status === 'auth_failed') {
+        setSubmitBanner({
+          message: sessionGate.message,
+          tone: 'error',
+        });
+        return;
+      }
+
+      const { error } = await supabase.from('volunteers').upsert(
+        {
+          user_id: userId,
+          name: formState.name.trim(),
+          phone: formState.phone.trim(),
+          skills: formState.skills,
+          available: formState.availability === 'available',
+          availability: formState.availability,
+          lat: formState.lat,
+          lng: formState.lng,
+        },
+        { onConflict: 'user_id' },
+      );
 
       if (error) {
         if (isAuthRateLimitError(error.message)) {
           setSubmitBanner({ message: RATE_LIMIT_SOFT_MESSAGE, tone: 'pause' });
+          return;
+        }
+        if (/permission denied for table|42501/i.test(error.message)) {
+          setSubmitBanner({
+            message:
+              'Your account must be signed in (confirmed email) before saving your profile. Confirm the Supabase email link if you have not, use “Already a volunteer?” on the home page to sign in, then complete registration again.',
+            tone: 'pause',
+          });
           return;
         }
         setSubmitBanner({ message: error.message, tone: 'error' });

@@ -1,12 +1,17 @@
 import { useCallback, useState } from 'react';
+<<<<<<< Updated upstream
 import {
   NeedSubmissionForm,
   type NeedSubmissionPayload,
 } from '../components/public/NeedSubmissionForm';
 import { CrisisEventBanner } from '../components/public/CrisisEventBanner';
+=======
+import { NeedSubmissionForm } from '../components/public/NeedSubmissionForm';
+>>>>>>> Stashed changes
 import { PageBackground } from '../components/public/PageBackground';
 import { PublicPageShell } from '../components/public/PublicPageShell';
 import { SubmitSuccess } from '../components/public/SubmitSuccess';
+<<<<<<< Updated upstream
 import { useAppContext } from '../context/AppContext';
 import { supabase } from '../components/public/supabase';
 import '../index.css';
@@ -31,6 +36,12 @@ function buildDescription(payload: NeedSubmissionPayload): string {
   ].join('\n');
 }
 
+=======
+import type { NeedSubmissionPayload } from '../types';
+import { submitPublicHelpRequest } from '../services/submitPublicHelpRequest';
+import '../index.css';
+
+>>>>>>> Stashed changes
 function PublicSubmit() {
   const { currentEvent } = useAppContext();
   const [view, setView] = useState<'form' | 'success'>('form');
@@ -44,7 +55,11 @@ function PublicSubmit() {
       setIsSubmitting(true);
       setSubmitError(null);
 
+<<<<<<< Updated upstream
       const eventId = currentEvent?.id ?? FALLBACK_EVENT_ID;
+=======
+    const { error } = await submitPublicHelpRequest(payload);
+>>>>>>> Stashed changes
 
       const { data, error } = await supabase
         .from('needs')
@@ -61,7 +76,17 @@ function PublicSubmit() {
         .select('id')
         .single();
 
+<<<<<<< Updated upstream
       setIsSubmitting(false);
+=======
+    if (error) {
+      setSubmitError(
+        error ||
+          'Something went wrong while submitting your request. Please try again.'
+      );
+      return;
+    }
+>>>>>>> Stashed changes
 
       if (error || !data?.id) {
         setSubmitError(

@@ -1,5 +1,6 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
 import PublicSubmit from './pages/PublicSubmit'
@@ -8,9 +9,11 @@ import GlobalAwareness from './pages/GlobalAwareness'
 import VolunteerRegister from './pages/VolunteerRegister'
 import VolunteerDashboard from './pages/VolunteerDashboard'
 import CoordinatorPanel from './pages/CoordinatorPanel'
-import { AppProvider, useAppContext } from './context/AppContext'
+import CoordinatorLogin from './pages/CoordinatorLogin'
+import { AppProvider } from './context/AppContext'
 import { SupabaseProvider } from './context/SupabaseContext'
 import { useTriage } from './hooks/useTriage'
+import { supabase } from './services/supabase'
 
 const OpsMap = lazy(() => import('./pages/OpsMap'))
 const AdminOverview = lazy(() => import('./pages/AdminOverview'))
@@ -21,24 +24,71 @@ function BackgroundTriage() {
   return null
 }
 
-function RequireAuth({ children }: { children: ReactNode }) {
-  const { user } = useAppContext()
+function AuthLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#0a0f1e] font-sans text-slate-400">
+      Checking session…
+    </div>
+  )
+}
 
-  if (!user) {
+function RequireAuth({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null | undefined>(undefined)
+
+  useEffect(() => {
+    void supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session ?? null)
+    })
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  if (session === undefined) {
+    return <AuthLoading />
+  }
+
+  if (!session) {
     return <Navigate to="/volunteer" replace />
   }
 
-  return children
+  return <>{children}</>
 }
 
 function RequireCoordinator({ children }: { children: ReactNode }) {
-  const { isCoordinator } = useAppContext()
+  const [ready, setReady] = useState(false)
+  const [allowed, setAllowed] = useState(false)
 
-  if (!isCoordinator) {
-    return <Navigate to="/" replace />
+  useEffect(() => {
+    function applySession(next: Session | null) {
+      const role = next?.user?.user_metadata?.role
+      setAllowed(role === 'coordinator')
+      setReady(true)
+    }
+
+    void supabase.auth.getSession().then(({ data }) => {
+      applySession(data.session ?? null)
+    })
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      applySession(nextSession)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  if (!ready) {
+    return <AuthLoading />
   }
 
-  return children
+  if (!allowed) {
+    return <Navigate to="/coordinator/login" replace />
+  }
+
+  return <>{children}</>
 }
 
 function App() {
@@ -69,6 +119,7 @@ function App() {
                   </RequireAuth>
                 }
               />
+              <Route path="/coordinator/login" element={<CoordinatorLogin />} />
               <Route
                 path="/coordinator"
                 element={
