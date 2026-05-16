@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { buildVolunteerPasswordFromPhone } from '../auth/volunteerPassword';
-import { CrisisEventBanner } from '../components/public/CrisisEventBanner';
 import { LiveCrisisStats } from '../components/public/LiveCrisisStats';
 import { PublicPageShell } from '../components/public/PublicPageShell';
 import { useAppContext } from '../context/useAppContext';
@@ -556,10 +555,6 @@ function Home() {
           </p>
         </header>
 
-        <div className="mx-auto mb-6 max-w-3xl">
-          <CrisisEventBanner event={currentEvent} />
-        </div>
-
         <section className="mx-auto grid w-full max-w-5xl gap-6 md:grid-cols-2 md:gap-8">
           <article
             className="group flex cursor-pointer flex-col rounded-2xl border border-red-500/30 bg-[rgba(239,68,68,0.1)] p-8 backdrop-blur-[16px] transition-all duration-300 hover:-translate-y-2 hover:border-red-400/60 hover:shadow-[0_0_40px_rgba(239,68,68,0.25)]"
@@ -624,12 +619,20 @@ function Home() {
 
         <LiveCrisisStats eventId={currentEvent?.id} className="mx-auto mt-10 max-w-5xl" />
 
-        <Link
-          to="/awareness"
-          className="mx-auto mt-6 block max-w-md text-center text-sm text-cyan-400/90 transition-colors hover:text-cyan-300"
-        >
-          View global situation &amp; external alerts →
-        </Link>
+        <div className="mx-auto mt-6 flex max-w-md flex-col items-center gap-1.5">
+          <Link
+            to="/awareness"
+            className="block text-center text-sm text-cyan-400/90 transition-colors hover:text-cyan-300"
+          >
+            View the live threat map →
+          </Link>
+          <Link
+            to="/news"
+            className="block text-center text-sm text-cyan-400/90 transition-colors hover:text-cyan-300"
+          >
+            Read the AI hazard digest →
+          </Link>
+        </div>
 
         <VolunteerAccess />
 

@@ -17,6 +17,7 @@ import { supabase, supabaseConfigError } from './services/supabase';
 
 const OpsMap = lazy(() => import('./pages/OpsMap'));
 const AdminOverview = lazy(() => import('./pages/AdminOverview'));
+const AiNews = lazy(() => import('./pages/AiNews'));
 
 function BackgroundTriage() {
   useTriage();
@@ -134,6 +135,7 @@ function App() {
               <Route path="/submit" element={<PublicSubmit />} />
               <Route path="/status/:id" element={<RequestStatus />} />
               <Route path="/awareness" element={<GlobalAwareness />} />
+              <Route path="/news" element={<AiNews />} />
               <Route path="/volunteer" element={<VolunteerRegister />} />
               <Route path="/volunteer/register" element={<VolunteerRegister />} />
               <Route

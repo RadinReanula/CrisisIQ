@@ -119,3 +119,43 @@ export interface HelpRequest {
   urgency: HelpRequestUrgency;
   event_id?: string;
 }
+
+/* ------------------------------------------------------------------ */
+/* AI News                                                             */
+/* ------------------------------------------------------------------ */
+
+export type NewsItemSource =
+  | 'crisisiq'
+  | 'gdacs'
+  | 'usgs'
+  | 'reliefweb'
+  | 'web';
+
+export type DisasterLevel = 'critical' | 'high' | 'medium' | 'low' | 'info';
+
+/**
+ * Unified news item rendered on /news. Produced by the `ai-news` Netlify
+ * function from a mix of CrisisIQ submissions and live hazard feeds.
+ */
+export interface NewsItem {
+  id: string;
+  source: NewsItemSource;
+  source_label: string;
+  source_url?: string;
+  title: string;
+  summary: string;
+  disaster_level: DisasterLevel;
+  disaster_type?: string;
+  region?: string;
+  lat?: number;
+  lng?: number;
+  /** ISO timestamp when the event/submission happened. */
+  occurred_at: string;
+  affected_population?: number;
+}
+
+export interface AiNewsResponse {
+  items: NewsItem[];
+  generated_at: string;
+  next_refresh_at: string;
+}

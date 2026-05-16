@@ -1,6 +1,6 @@
 # CrisisIQ
 
-AI-powered real-time disaster response coordination: public need submission, volunteer registration and missions, coordinator ops map, and Claude-based triage via Netlify serverless functions.
+AI-powered real-time disaster response coordination: public need submission, volunteer registration and missions, coordinator ops map, OpenAI-based triage / sitrep, and an AI news digest that fuses CrisisIQ submissions with live GDACS / USGS / ReliefWeb feeds — all served via Netlify serverless functions.
 
 ## Stack
 
@@ -13,7 +13,7 @@ AI-powered real-time disaster response coordination: public need submission, vol
 ## Local development
 
 1. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-2. For Netlify functions locally, set `ANTHROPIC_API_KEY` (e.g. in `.env` for `netlify dev` or the Netlify UI in production).
+2. For Netlify functions locally, set `OPENAI_API_KEY` plus `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (used by the AI news function). Optional overrides: `OPENAI_MODEL` (triage / sitrep, default `gpt-4o-mini`) and `OPENAI_NEWS_MODEL` (news with web search, default `gpt-4o-mini`).
 3. Install and run:
 
 ```bash
@@ -37,7 +37,7 @@ npx supabase db reset   # local only; applies migrations + seed.sql
 
 ## Deploy
 
-Connect the repo to Netlify, set build command `npm run build`, publish directory `dist`, and configure dashboard env vars (`ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` if used server-side).
+Connect the repo to Netlify, set build command `npm run build`, publish directory `dist`, and configure dashboard env vars (`OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, plus optional `OPENAI_MODEL` / `OPENAI_NEWS_MODEL`).
 
 ---
 

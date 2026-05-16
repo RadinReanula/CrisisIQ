@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { triageNeed } from '../services/claude';
+import { triageNeed } from '../services/ai';
 import { supabase } from '../services/supabase';
 import type { Need, TriageResult, Volunteer } from '../types';
 

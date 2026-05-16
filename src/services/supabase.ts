@@ -308,6 +308,36 @@ export async function getPublicCrisisStats(eventId?: string): Promise<PublicCris
   }
 }
 
+/**
+ * Fetches active (non-resolved) needs with GPS coordinates for the live threat map.
+ * Used by the /awareness page; anon SELECT is permitted by RLS.
+ */
+export async function getActiveThreats(): Promise<Need[]> {
+  try {
+    const { data, error } = await supabase
+      .from('needs')
+      .select('*')
+      .neq('status', 'resolved')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[getActiveThreats]', error.message);
+      return [];
+    }
+
+    if (!Array.isArray(data)) return [];
+
+    const out: Need[] = [];
+    for (const row of data) {
+      const parsed = parseNeedRecord(row);
+      if (parsed) out.push(parsed);
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 export interface NeedTrackingInfo {
   need: Need;
   assignmentStatus: string | null;
