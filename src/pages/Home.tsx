@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { buildVolunteerPasswordFromPhone } from '../auth/volunteerPassword';
+import { CrisisEventBanner } from '../components/public/CrisisEventBanner';
+import { LiveCrisisStats } from '../components/public/LiveCrisisStats';
+import { PublicPageShell } from '../components/public/PublicPageShell';
 import { useAppContext } from '../context/useAppContext';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import { supabase } from '../services/supabase';
 import '../index.css';
 
@@ -37,12 +42,6 @@ const PARTICLES: { id: number; positionClass: string; animClass: string }[] = [
   { id: 19, positionClass: 'left-[48%] top-[58%]', animClass: 'crisis-particle-19' },
   { id: 20, positionClass: 'left-[95%] top-[12%]', animClass: 'crisis-particle-20' },
 ];
-
-const STATS = [
-  { label: '2,847 Needs Resolved', dotClass: 'bg-red-500' },
-  { label: '1,204 Volunteers Active', dotClass: 'bg-cyan-500' },
-  { label: '98.2% Response Rate', dotClass: 'bg-emerald-400' },
-] as const;
 
 function ShieldAlertIcon() {
   return (
@@ -109,25 +108,44 @@ function VolunteerAccess() {
   const { user } = useAppContext();
   const [expanded, setExpanded] = useState(false);
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSignIn = useCallback(async () => {
     setError(null);
+    const trimmedEmail = email.trim();
+    const trimmedPhone = phone.trim();
+    if (!trimmedEmail || !trimmedPhone) {
+      setError('Enter the same email and phone number you used when registering.');
+      return;
+    }
+
     setLoading(true);
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+    const password = buildVolunteerPasswordFromPhone(trimmedPhone);
+
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email: trimmedEmail,
       password,
     });
     setLoading(false);
+
     if (signInError) {
-      setError(signInError.message);
+      setError(
+        signInError.message.includes('Invalid login') || signInError.message.includes('Invalid')
+          ? 'Check your email and phone number match registration. The password is generated from your phone digits.'
+          : signInError.message,
+      );
       return;
     }
-    navigate('/volunteer/dashboard');
-  }, [email, password, navigate]);
+
+    if (!data.session) {
+      setError('Confirm your email in the message from Supabase, then try again.');
+      return;
+    }
+
+    navigate('/volunteer/dashboard', { replace: true });
+  }, [email, phone, navigate]);
 
   if (user) {
     return (
@@ -154,9 +172,7 @@ function VolunteerAccess() {
   }
 
   return (
-    <div
-      className={`mx-auto w-full max-w-md px-4 ${expanded ? 'mt-2' : 'mt-6'}`}
-    >
+    <div className="mx-auto mt-6 w-full max-w-md px-4">
       {!expanded ? (
         <div className="flex justify-center">
           <button
@@ -202,7 +218,7 @@ function VolunteerAccess() {
           <div className="space-y-3">
             <div>
               <label htmlFor="home-volunteer-email" className="mb-1 block text-xs text-slate-300">
-                Email
+                Email <span className="text-red-400">*</span>
               </label>
               <input
                 id="home-volunteer-email"
@@ -216,37 +232,24 @@ function VolunteerAccess() {
               />
             </div>
             <div>
-              <label htmlFor="home-volunteer-password" className="mb-1 block text-xs text-slate-300">
-                Password
+              <label htmlFor="home-volunteer-phone" className="mb-1 block text-xs text-slate-300">
+                Phone <span className="text-red-400">*</span>
               </label>
-              <div className="relative">
-                <input
-                  id="home-volunteer-password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                  className={`${VOLUNTEER_INPUT_CLASS} pr-11`}
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-all duration-300 hover:text-white"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? (
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                    </svg>
-                  ) : (
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
+              <input
+                id="home-volunteer-phone"
+                type="tel"
+                autoComplete="tel"
+                inputMode="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                disabled={loading}
+                placeholder="Same number as registration"
+                className={VOLUNTEER_INPUT_CLASS}
+              />
+              <p className="mt-1.5 text-[11px] leading-snug text-slate-500">
+                Your account password is generated from this phone number — it must match what you
+                entered when you registered as a volunteer.
+              </p>
             </div>
             {error && (
               <p className="text-sm text-red-400" role="alert">
@@ -281,10 +284,12 @@ function VolunteerAccess() {
 }
 
 function BackgroundSlideshow() {
+  const reducedMotion = useReducedMotion();
   const [current, setCurrent] = useState(0);
   const [previous, setPrevious] = useState<number | null>(null);
 
   useEffect(() => {
+    if (reducedMotion) return;
     const interval = window.setInterval(() => {
       setCurrent((idx) => {
         setPrevious(idx);
@@ -292,17 +297,19 @@ function BackgroundSlideshow() {
       });
     }, 6000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [reducedMotion]);
 
   useEffect(() => {
-    if (previous === null) return;
+    if (reducedMotion || previous === null) return;
     const timeout = window.setTimeout(() => setPrevious(null), 2200);
     return () => window.clearTimeout(timeout);
-  }, [previous, current]);
+  }, [previous, current, reducedMotion]);
+
+  const imageIndex = reducedMotion ? 0 : current;
 
   return (
     <div className="home-bg-root" aria-hidden>
-      {previous !== null && (
+      {!reducedMotion && previous !== null && (
         <img
           src={BG_IMAGES[previous]}
           alt=""
@@ -310,9 +317,15 @@ function BackgroundSlideshow() {
         />
       )}
       <img
-        src={BG_IMAGES[current]}
+        src={BG_IMAGES[imageIndex]}
         alt=""
-        className={`home-bg-img ${previous !== null ? 'home-bg-img--fade-in' : 'home-bg-img--visible'}`}
+        className={`home-bg-img ${
+          reducedMotion
+            ? 'home-bg-img--visible'
+            : previous !== null
+              ? 'home-bg-img--fade-in'
+              : 'home-bg-img--visible'
+        }`}
       />
       <div className="home-bg-overlay" />
     </div>
@@ -325,7 +338,7 @@ function AboutSection() {
     {
       iconClass: 'text-cyan-400',
       title: 'Real-time Updates',
-      desc: 'Live assignment tracking via Supabase Realtime',
+      desc: 'Track your request live and get volunteer status without refreshing',
       path: 'M3.75 13.5l10.5-6.75M3.75 13.5v6.75h6.75M3.75 13.5L9 9.75m0 0 3-1.5M9 9.75V3.75m0 5.25L12 7.5m0 0 3-1.5M12 7.5V3.75m0 3.75L15 9.75m0 0 3 1.5M15 9.75V3.75',
     },
     {
@@ -504,27 +517,32 @@ function GuidelinesContactSection() {
 
 function Home() {
   const navigate = useNavigate();
+  const { currentEvent } = useAppContext();
+  const reducedMotion = useReducedMotion();
 
   return (
     <main className="relative isolate min-h-screen overflow-x-hidden bg-[#0a0f1e] font-sans text-white">
       <BackgroundSlideshow />
 
-      <div
-        className="pointer-events-none fixed inset-0 z-[1] overflow-hidden"
-        aria-hidden
-      >
-        <div className="crisis-aurora-orb-red absolute -left-32 top-1/4 h-[28rem] w-[28rem] rounded-full bg-red-600 opacity-20 blur-3xl" />
-        <div className="crisis-aurora-orb-cyan absolute -right-24 bottom-1/4 h-[32rem] w-[32rem] rounded-full bg-cyan-500 opacity-20 blur-3xl" />
-        {PARTICLES.map((p) => (
-          <span
-            key={p.id}
-            className={`crisis-particle absolute h-1 w-1 rounded-full bg-white opacity-30 ${p.positionClass} ${p.animClass}`}
-          />
-        ))}
-      </div>
+      {!reducedMotion && (
+        <div
+          className="pointer-events-none fixed inset-0 z-[1] overflow-hidden"
+          aria-hidden
+        >
+          <div className="crisis-aurora-orb-red absolute -left-32 top-1/4 h-[28rem] w-[28rem] rounded-full bg-red-600 opacity-20 blur-3xl" />
+          <div className="crisis-aurora-orb-cyan absolute -right-24 bottom-1/4 h-[32rem] w-[32rem] rounded-full bg-cyan-500 opacity-20 blur-3xl" />
+          {PARTICLES.map((p) => (
+            <span
+              key={p.id}
+              className={`crisis-particle absolute h-1 w-1 rounded-full bg-white opacity-30 ${p.positionClass} ${p.animClass}`}
+            />
+          ))}
+        </div>
+      )}
 
+      <PublicPageShell>
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <header className="py-10 text-center">
+        <header className="pb-4 pt-2 text-center sm:pt-4">
           <ShieldAlertIcon />
           <h1 className="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
             CrisisIQ
@@ -538,7 +556,9 @@ function Home() {
           </p>
         </header>
 
-        <VolunteerAccess />
+        <div className="mx-auto mb-6 max-w-3xl">
+          <CrisisEventBanner event={currentEvent} />
+        </div>
 
         <section className="mx-auto grid w-full max-w-5xl gap-6 md:grid-cols-2 md:gap-8">
           <article
@@ -602,25 +622,21 @@ function Home() {
           </article>
         </section>
 
-        <div className="mx-auto mt-10 flex max-w-5xl flex-col items-center justify-center gap-6 sm:flex-row sm:gap-10">
-          {STATS.map((stat) => (
-            <div
-              key={stat.label}
-              className="flex items-center gap-2.5 text-sm font-light text-slate-400"
-            >
-              <span
-                className={`h-2 w-2 shrink-0 rounded-full ${stat.dotClass} animate-pulse`}
-                aria-hidden
-              />
-              <span>{stat.label}</span>
-            </div>
-          ))}
-        </div>
+        <LiveCrisisStats eventId={currentEvent?.id} className="mx-auto mt-10 max-w-5xl" />
+
+        <Link
+          to="/awareness"
+          className="mx-auto mt-6 block max-w-md text-center text-sm text-cyan-400/90 transition-colors hover:text-cyan-300"
+        >
+          View global situation &amp; external alerts →
+        </Link>
+
+        <VolunteerAccess />
 
         <button
           type="button"
           className="mx-auto mt-6 block text-center text-sm font-light text-slate-400 transition-all duration-300 hover:text-white"
-          onClick={() => navigate('/coordinator')}
+          onClick={() => navigate('/coordinator/login')}
         >
           Coordinator? Sign in here →
         </button>
@@ -637,6 +653,7 @@ function Home() {
           </p>
         </footer>
       </div>
+      </PublicPageShell>
     </main>
   );
 }

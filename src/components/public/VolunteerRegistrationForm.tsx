@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { buildVolunteerPasswordFromPhone } from '../../auth/volunteerPassword';
+import { ensureAuthSessionForUser } from '../../auth/ensureAuthSession';
 import { supabase } from '../../services/supabase';
 import { LoadingSpinner } from './LoadingSpinner';
 import {
@@ -35,11 +37,21 @@ const inputClass =
 const labelClass = 'mb-1 block text-sm text-white';
 const errorClass = 'mt-1 text-sm text-red-400';
 
-function buildSignupPassword(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  const base = digits.length >= 6 ? digits : `${digits}crisisiq`;
-  return `${base}Aa1`;
+/** Supabase Auth enforces email send limits; password sign-in does not send email. */
+function isAuthRateLimitError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes('rate limit') ||
+    m.includes('too many requests') ||
+    m.includes('over_email_send') ||
+    m.includes('email rate') ||
+    m.includes('429') ||
+    m.includes('for security purposes')
+  );
 }
+
+const RATE_LIMIT_SOFT_MESSAGE =
+  'You’ve reached the short email-send limit from too many new sign-up attempts. Wait about one minute and tap Register again. If you already have an account, we’ll sign you in quietly—no new confirmation email.';
 
 function MapPinIcon() {
   return (
@@ -193,13 +205,24 @@ export function VolunteerRegistrationForm() {
     lng: null,
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitBanner, setSubmitBanner] = useState<{
+    message: string;
+    tone: 'error' | 'pause';
+  } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationMode, setLocationMode] = useState<VolunteerLocationMode>('gps');
   const [manualCityId, setManualCityId] = useState<VolunteerAreaId | ''>('');
   const [manualLandmark, setManualLandmark] = useState('');
+
+  useEffect(() => {
+    if (!submitBanner || submitBanner.tone !== 'pause') return;
+    const id = window.setTimeout(() => {
+      setSubmitBanner(null);
+    }, 14000);
+    return () => window.clearTimeout(id);
+  }, [submitBanner]);
 
   const toggleSkill = useCallback((skill: VolunteerSkillOption) => {
     setFormState((prev) => {
@@ -355,7 +378,7 @@ export function VolunteerRegistrationForm() {
   );
 
   const handleRegisterClick = useCallback(async () => {
-    setSubmitError(null);
+    setSubmitBanner(null);
     setSuccessMessage(null);
 
     if (!validate()) return;
@@ -363,56 +386,146 @@ export function VolunteerRegistrationForm() {
     setIsSubmitting(true);
 
     try {
-      let userId: string | undefined;
+      const email = formState.email.trim();
+      const password = buildVolunteerPasswordFromPhone(formState.phone.trim());
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      userId = user?.id;
+      let userId = (await supabase.auth.getUser()).data.user?.id;
 
       if (!userId) {
-        const { data: signUpData, error: signUpError } =
-          await supabase.auth.signUp({
-            email: formState.email.trim(),
-            password: buildSignupPassword(formState.phone.trim()),
-            options: {
-              data: {
-                role: 'volunteer',
-                full_name: formState.name.trim(),
-              },
-            },
-          });
-
-        if (signUpError) {
-          setSubmitError(signUpError.message);
-          return;
-        }
-
-        userId = signUpData.user?.id;
-
-        if (!userId) {
-          setSubmitError(
-            'Account created. Check your email to confirm, then open this page again to finish registration.'
-          );
-          return;
+        const signInRes = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (!signInRes.error && signInRes.data.user) {
+          userId = signInRes.data.user.id;
         }
       }
 
-      const { error } = await supabase.from('volunteers').insert({
-        user_id: userId,
-        name: formState.name.trim(),
-        phone: formState.phone.trim(),
-        email: formState.email.trim(),
-        skills: formState.skills,
-        availability: formState.availability,
-        lat: formState.lat ?? null,
-        lng: formState.lng ?? null,
-        status: 'active',
-      });
+      if (!userId) {
+        const signUpRes = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: formState.name.trim(),
+              phone: formState.phone.trim(),
+            },
+          },
+        });
+
+        if (signUpRes.error) {
+          if (isAuthRateLimitError(signUpRes.error.message)) {
+            setSubmitBanner({ message: RATE_LIMIT_SOFT_MESSAGE, tone: 'pause' });
+            return;
+          }
+
+          if (
+            /already (been )?registered|already exists|user already|duplicate|signup/i.test(
+              signUpRes.error.message,
+            )
+          ) {
+            const retryIn = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+            if (!retryIn.error && retryIn.data.user) {
+              userId = retryIn.data.user.id;
+            } else {
+              setSubmitBanner({
+                message:
+                  'This email is already registered. Use the same phone number as before (your password is derived from it), or reset your password.',
+                tone: 'error',
+              });
+              return;
+            }
+          } else {
+            setSubmitBanner({
+              message: signUpRes.error.message,
+              tone: 'error',
+            });
+            return;
+          }
+        } else {
+          userId = signUpRes.data.user?.id ?? undefined;
+          if (!userId) {
+            setSubmitBanner({
+              message:
+                'Check your email to confirm your account, then return here and tap Register again to finish your profile.',
+              tone: 'pause',
+            });
+            return;
+          }
+        }
+      }
+
+      if (!userId) {
+        setSubmitBanner({
+          message: 'Could not verify your session. Try again in a moment.',
+          tone: 'error',
+        });
+        return;
+      }
+
+      if (formState.lat === null || formState.lng === null) {
+        setSubmitBanner({
+          message: 'Location coordinates are required.',
+          tone: 'error',
+        });
+        return;
+      }
+
+      const sessionGate = await ensureAuthSessionForUser(
+        supabase,
+        userId,
+        email,
+        password,
+      );
+
+      if (sessionGate.status === 'need_email_confirm') {
+        setSubmitBanner({
+          message:
+            'Open the confirmation link Supabase sent to your email, then come back and tap Register again. Your profile can only be saved after your account is confirmed and signed in.',
+          tone: 'pause',
+        });
+        return;
+      }
+
+      if (sessionGate.status === 'auth_failed') {
+        setSubmitBanner({
+          message: sessionGate.message,
+          tone: 'error',
+        });
+        return;
+      }
+
+      const { error } = await supabase.from('volunteers').upsert(
+        {
+          user_id: userId,
+          name: formState.name.trim(),
+          phone: formState.phone.trim(),
+          skills: formState.skills,
+          available: formState.availability === 'available',
+          availability: formState.availability,
+          lat: formState.lat,
+          lng: formState.lng,
+        },
+        { onConflict: 'user_id' },
+      );
 
       if (error) {
-        setSubmitError(error.message);
+        if (isAuthRateLimitError(error.message)) {
+          setSubmitBanner({ message: RATE_LIMIT_SOFT_MESSAGE, tone: 'pause' });
+          return;
+        }
+        if (/permission denied for table|42501/i.test(error.message)) {
+          setSubmitBanner({
+            message:
+              'Your account must be signed in (confirmed email) before saving your profile. Confirm the Supabase email link if you have not, use “Already a volunteer?” on the home page to sign in, then complete registration again.',
+            tone: 'pause',
+          });
+          return;
+        }
+        setSubmitBanner({ message: error.message, tone: 'error' });
         return;
       }
 
@@ -424,9 +537,11 @@ export function VolunteerRegistrationForm() {
         navigate('/volunteer/dashboard');
       }, 2000);
     } catch (caught) {
-      setSubmitError(
-        caught instanceof Error ? caught.message : 'Registration failed.'
-      );
+      setSubmitBanner({
+        message:
+          caught instanceof Error ? caught.message : 'Registration failed.',
+        tone: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -458,12 +573,25 @@ export function VolunteerRegistrationForm() {
         Join the Response Network
       </p>
 
-      {submitError && (
+      {submitBanner && (
         <div
-          className="mx-auto mb-4 max-w-[560px] rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-sm text-red-300 backdrop-blur-sm"
-          role="alert"
+          className={`mx-auto mb-4 flex max-w-[560px] gap-3 rounded-xl border px-4 py-3 text-sm backdrop-blur-sm ${
+            submitBanner.tone === 'pause'
+              ? 'border-amber-500/35 bg-amber-950/25 text-amber-100'
+              : 'border-red-500/40 bg-red-950/40 text-red-300'
+          }`}
+          role={submitBanner.tone === 'pause' ? 'status' : 'alert'}
         >
-          {submitError}
+          <p className="min-w-0 flex-1">{submitBanner.message}</p>
+          <button
+            type="button"
+            className="shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-400 underline-offset-2 hover:underline"
+            onClick={() => {
+              setSubmitBanner(null);
+            }}
+          >
+            Dismiss
+          </button>
         </div>
       )}
 

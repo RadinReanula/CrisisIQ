@@ -1,4 +1,5 @@
 export type NeedType = 'food' | 'medical' | 'rescue' | 'shelter' | 'other';
+export type HelpRequestUrgency = 'low' | 'medium' | 'high' | 'critical';
 export type NeedStatus = 'pending' | 'assigned' | 'in_progress' | 'resolved';
 export type VolunteerSkill = 'medical' | 'driving' | 'cooking' | 'rescue' | 'translation' | 'logistics';
 export type AssignmentStatus = 'assigned' | 'en_route' | 'arrived' | 'completed';
@@ -28,6 +29,8 @@ export interface Volunteer {
   lng: number;
   skills: VolunteerSkill[];
   available: boolean;
+  /** Persisted when `volunteers.availability` exists; mirrors registration UI. */
+  availability?: 'available' | 'standby';
   active_mission_id?: string;
   phone?: string;
   created_at?: string;
@@ -88,4 +91,31 @@ export interface SitrepResponse {
 export interface ApiError {
   error: string;
   details?: string;
+}
+
+/** Payload from the public /submit "Request help" form (maps to `help_requests`). */
+export interface NeedSubmissionPayload {
+  name: string;
+  contact: string;
+  needType: NeedType;
+  locationText: string;
+  lat: number;
+  lng: number;
+  description: string;
+  urgency: HelpRequestUrgency;
+}
+
+/** Row shape for `public.help_requests`. */
+export interface HelpRequest {
+  id: string;
+  created_at: string;
+  submitter_name: string;
+  contact: string;
+  need_type: NeedType;
+  location_text: string;
+  lat: number;
+  lng: number;
+  description: string;
+  urgency: HelpRequestUrgency;
+  event_id?: string;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { supabase } from '../services/supabase';
+import { getActiveEvent, supabase } from '../services/supabase';
 import type { CrisisEvent } from '../types';
 import { AppContext } from './appContextValue';
 
@@ -37,6 +37,21 @@ export function AppProvider({ children }: AppProviderProps) {
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const event = await getActiveEvent();
+      if (!cancelled) {
+        setCurrentEvent(event);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
     };
   }, []);
 

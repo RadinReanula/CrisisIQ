@@ -137,11 +137,10 @@ function CoordinatorPanel() {
   }, [fetchAvailableVolunteers, refreshStats, needs.length]);
 
   useEffect(() => {
-    const bootstrapTimer = window.setTimeout(() => {
+    queueMicrotask(() => {
       void loadNeeds();
       void loadVolunteers();
-    }, 0);
-    return () => window.clearTimeout(bootstrapTimer);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount bootstrap
   }, []);
 

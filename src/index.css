@@ -253,3 +253,20 @@
     opacity: 0;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .crisis-particle,
+  .crisis-aurora-orb-red,
+  .crisis-aurora-orb-cyan,
+  .crisis-title-underline,
+  .animate-fade-in,
+  .home-bg-img--fade-in,
+  .home-bg-img--fade-out {
+    animation: none !important;
+    transition: none !important;
+  }
+}

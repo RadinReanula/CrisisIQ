@@ -88,12 +88,10 @@ function VolunteerDashboard() {
   }, [fetchAssignments, fetchVolunteerProfile]);
 
   useEffect(() => {
-    const bootstrapTimer = window.setTimeout(() => {
+    queueMicrotask(() => {
       void loadDashboard();
-    }, 0);
-    return () => window.clearTimeout(bootstrapTimer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only bootstrap
-  }, []);
+    });
+  }, [loadDashboard]);
 
   useEffect(() => {
     const volunteerId = volunteerIdRef.current;

@@ -1,0 +1,213 @@
+.page {
+  min-height: 100vh;
+  padding: var(--space-6) var(--space-4);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+.inner {
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+
+.intro {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin-bottom: var(--space-6);
+}
+
+.sectionLabel {
+  display: block;
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: var(--space-2);
+}
+
+.fieldGroup {
+  margin-bottom: var(--space-5);
+}
+
+.textInput {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.checkboxGrid {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.radioRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.radioInner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.radioHint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.help {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+.primaryButton {
+  width: 100%;
+  padding: var(--space-3) var(--space-5);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-weight: 600;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.secondaryButton {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-primary);
+  font-weight: 600;
+  width: auto;
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.secondaryRow {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-3);
+}
+
+.switchMode {
+  text-align: center;
+  margin-top: var(--space-4);
+  font-size: 0.875rem;
+}
+
+.errorBanner {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-urgent) 14%, transparent);
+  color: var(--color-urgent);
+  margin-bottom: var(--space-4);
+  font-size: 0.875rem;
+
+  &[role='alert'] {
+    border: 1px solid color-mix(in srgb, var(--color-urgent) 42%, transparent);
+  }
+}
+
+.retryRow {
+  margin-top: var(--space-3);
+}
+
+.skeletonWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.skeletonBar {
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--color-border);
+  opacity: 0.6;
+  animation: pulseSkeleton 1.2s ease-in-out infinite alternate;
+}
+
+.skeletonShort {
+  width: 60%;
+  height: 20px;
+}
+
+@keyframes pulseSkeleton {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 0.75;
+  }
+}
+
+.authModes {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.hintList {
+  margin: 0;
+  padding-left: var(--space-6);
+}
+
+.submitSpacer {
+  margin-top: var(--space-6);
+}
+
+.modeButton {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-weight: 600;
+
+  &[data-active='true'] {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: var(--color-primary-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
