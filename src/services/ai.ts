@@ -1,5 +1,6 @@
 import type {
   AiNewsResponse,
+  AiThreatsResponse,
   Assignment,
   Need,
   SitrepResponse,
@@ -82,6 +83,42 @@ export async function generateSitrep(
   } catch {
     return SITREP_FALLBACK;
   }
+}
+
+/**
+ * Fetches active threats from the public `requests` table, optionally
+ * enriched with per-row OpenAI analysis (AI urgency, category, summary,
+ * recommended actions). The Netlify function caches the enriched payload
+ * for ~5 minutes.
+ *
+ * @param opts.force  Bypass the server cache and force a fresh AI run.
+ * @param opts.skipAi Return raw rows without invoking OpenAI (cheap; used
+ *                    when the user has AI analysis toggled off).
+ */
+export async function getAiThreats(
+  opts: { force?: boolean; skipAi?: boolean } = {},
+): Promise<AiThreatsResponse> {
+  const params: string[] = [];
+  if (opts.force) params.push('force=1');
+  if (opts.skipAi) params.push('ai=0');
+  const qs = params.length > 0 ? `?${params.join('&')}` : '';
+  const url = `${FUNCTIONS_BASE}/ai-threats${qs}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new Error(
+      detail
+        ? `AI threats request failed (${response.status}): ${detail}`
+        : `AI threats request failed (${response.status})`,
+    );
+  }
+
+  return (await response.json()) as AiThreatsResponse;
 }
 
 /**

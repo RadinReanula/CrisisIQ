@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { volunteerSignInPasswordCandidates } from '../auth/volunteerPassword';
-import { LiveCrisisStats } from '../components/public/LiveCrisisStats';
+import { CrisisIqBrandMark } from '../components/brand/CrisisIqBrandMark';
+import LiveCrisisStats from '../components/public/LiveCrisisStats';
 import { PublicPageShell } from '../components/public/PublicPageShell';
 import { useAppContext } from '../context/useAppContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
@@ -42,27 +43,7 @@ const PARTICLES: { id: number; positionClass: string; animClass: string }[] = [
   { id: 20, positionClass: 'left-[95%] top-[12%]', animClass: 'crisis-particle-20' },
 ];
 
-function ShieldAlertIcon() {
-  return (
-    <svg
-      className="mx-auto h-16 w-16 text-red-500 transition-all duration-300"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.5}
-      stroke="currentColor"
-      aria-hidden
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 9v3.75m0 3.75h.007M10.29 3.86 1.82 8.25c-.78.43-1.28 1.22-1.28 2.1v4.52c0 4.48 3.84 8.7 9.46 10.13 5.62-1.43 9.46-5.65 9.46-10.13v-4.52c0-.88-.5-1.67-1.28-2.1L13.71 3.86a2.25 2.25 0 0 0-2.42 0Z"
-      />
-    </svg>
-  );
-}
-
-function HandRaisedIcon() {
+function EmergencyHelpIcon() {
   return (
     <svg
       className="h-14 w-14 text-red-500"
@@ -76,7 +57,17 @@ function HandRaisedIcon() {
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
-        d="M7.5 7.5V5.625a2.625 2.625 0 1 1 5.25 0v8.25m-5.25 0h5.25m0 0h-5.376a1.125 1.125 0 0 0-1.124 1.229l1.066 8.652a3.75 3.75 0 0 0 3.672 3.282h.648M12 20.25v-3m0 0V9.75m0 3.75h3.375"
+        d="M12 21s6-5.35 6-11.25a6 6 0 1 0-12 0C6 15.65 12 21 12 21Z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 6.75v4.5m0 3h.007"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M8.75 3.75 7.4 2.4M15.25 3.75l1.35-1.35M19.5 8.25h1.75M2.75 8.25H4.5"
       />
     </svg>
   );
@@ -497,7 +488,7 @@ function GuidelinesContactSection() {
               </div>
             </div>
           </div>
-          <div className="mb-3 rounded-xl border border-slate-700/30 bg-slate-800/40 p-3 transition-all duration-300 hover:border-slate-600/50">
+          <div className="rounded-xl border border-slate-700/30 bg-slate-800/40 p-3 transition-all duration-300 hover:border-slate-600/50">
             <div className="flex gap-3">
               <svg className="h-5 w-5 shrink-0 text-cyan-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
@@ -506,18 +497,6 @@ function GuidelinesContactSection() {
                 <p className="text-xs uppercase tracking-wide text-cyan-400">Platform Support</p>
                 <p className="text-sm text-white">support@crisisiq.lk</p>
                 <p className="text-xs text-slate-400">Response within 24 hours</p>
-              </div>
-            </div>
-          </div>
-          <div className="rounded-xl border border-slate-700/30 bg-slate-800/40 p-3 transition-all duration-300 hover:border-slate-600/50">
-            <div className="flex gap-3">
-              <svg className="h-5 w-5 shrink-0 text-purple-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 4.5" />
-              </svg>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-purple-400">Built at</p>
-                <p className="text-sm text-white">Cursor Buildathon 2025</p>
-                <p className="text-xs text-slate-400"> Sri Lanka</p>
               </div>
             </div>
           </div>
@@ -555,7 +534,7 @@ function Home() {
       <PublicPageShell>
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <header className="pb-4 pt-2 text-center sm:pt-4">
-          <ShieldAlertIcon />
+          <CrisisIqBrandMark variant="hero" />
           <h1 className="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
             CrisisIQ
           </h1>
@@ -581,7 +560,7 @@ function Home() {
             role="button"
             tabIndex={0}
           >
-            <HandRaisedIcon />
+            <EmergencyHelpIcon />
             <h2 className="mt-6 text-2xl font-semibold text-white">I Need Help</h2>
             <p className="mt-3 flex-1 font-light leading-relaxed text-slate-300">
               Submit an emergency request. Coordinators will dispatch help to your location
@@ -662,7 +641,7 @@ function Home() {
 
         <footer className="mt-12 border-t border-slate-700/30 py-6 text-center">
           <p className="text-sm text-slate-500">
-            © 2025 CrisisIQ 
+            © 2026 CrisisIQ 
           </p>
           <p className="mt-2 text-xs text-red-400/70 animate-pulse">
             In an emergency always call 119 first

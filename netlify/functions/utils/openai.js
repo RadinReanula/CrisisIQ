@@ -18,7 +18,15 @@ function getClient() {
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY environment variable is not set");
   }
-  cachedClient = new OpenAI({ apiKey });
+  // Netlify Functions hard-cap at 10s (free) / 26s (Pro), so we need every
+  // OpenAI request to either succeed quickly or fail fast — the SDK's
+  // default 600s timeout and 2 retries would silently consume the entire
+  // function budget on a single hiccup.
+  cachedClient = new OpenAI({
+    apiKey,
+    timeout: 20_000,
+    maxRetries: 1,
+  });
   return cachedClient;
 }
 

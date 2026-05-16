@@ -159,3 +159,71 @@ export interface AiNewsResponse {
   generated_at: string;
   next_refresh_at: string;
 }
+
+/* ------------------------------------------------------------------ */
+/* Threats (public `requests` table, optionally enriched by OpenAI)    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 1:1 mirror of a row in `public.requests`. This is the canonical shape
+ * the live threat map / awareness sidebar render from.
+ */
+export interface RequestRow {
+  id: string;
+  created_at: string;
+  name: string;
+  contact: string;
+  need_type: NeedType;
+  location_text: string;
+  lat: number;
+  lng: number;
+  description: string;
+  urgency: HelpRequestUrgency;
+  status: NeedStatus;
+  event_id?: string;
+}
+
+/**
+ * Coarse incident category produced by OpenAI from the description field.
+ * Lets coordinators see, at a glance, what kind of crisis each request
+ * represents beyond the user-picked `need_type` checkbox.
+ */
+export type ThreatCategoryLabel =
+  | 'natural-disaster'
+  | 'medical'
+  | 'rescue'
+  | 'shelter'
+  | 'food-water'
+  | 'security'
+  | 'infrastructure'
+  | 'other';
+
+/** Output of `ai-threats` for a single request. */
+export interface ThreatAiAnalysis {
+  /** AI-reassessed urgency from the free-text description. */
+  ai_urgency: HelpRequestUrgency;
+  /** High-level category derived from the description. */
+  ai_category: ThreatCategoryLabel;
+  /** 1-sentence neutral summary of what is happening. */
+  ai_summary: string;
+  /** Up to 3 short recommended next actions for coordinators. */
+  ai_actions: string[];
+  /** Model confidence in the analysis, 0..1. */
+  ai_confidence: number;
+}
+
+/**
+ * Live threat shown on /awareness. Always carries the raw request row;
+ * `ai` is populated only when the OpenAI analysis call succeeded.
+ */
+export interface Threat extends RequestRow {
+  ai?: ThreatAiAnalysis;
+}
+
+export interface AiThreatsResponse {
+  threats: Threat[];
+  /** True when at least one threat has an `ai` block. */
+  ai_enabled: boolean;
+  generated_at: string;
+  next_refresh_at: string;
+}

@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { CrisisEventBanner } from '../components/public/CrisisEventBanner';
 import { NeedSubmissionForm } from '../components/public/NeedSubmissionForm';
 import { PageBackground } from '../components/public/PageBackground';
 import { PublicPageShell } from '../components/public/PublicPageShell';
@@ -58,9 +57,6 @@ function PublicSubmit() {
           <SubmitSuccess needId={submittedNeedId} onSubmitAnother={handleSubmitAnother} />
         ) : (
           <>
-            <div className="mx-auto max-w-[560px] px-4 pt-4">
-              <CrisisEventBanner event={currentEvent} compact />
-            </div>
             <NeedSubmissionForm
               key={formKey}
               isSubmitting={isSubmitting}

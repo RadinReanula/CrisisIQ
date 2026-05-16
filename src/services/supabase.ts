@@ -1,5 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
-import type { CrisisEvent, Need, Volunteer, VolunteerSkill } from '../types';
+import type {
+  CrisisEvent,
+  HelpRequestUrgency,
+  Need,
+  NeedStatus,
+  NeedType,
+  RequestRow,
+  Threat,
+  Volunteer,
+  VolunteerSkill,
+} from '../types';
 
 const VOLUNTEER_SKILLS: readonly VolunteerSkill[] = [
   'medical',
@@ -328,6 +338,89 @@ export interface PublicCrisisStats {
   lastUpdated: string;
 }
 
+/**
+ * Home page + public dashboards: counts from `public.requests` (same source
+ * as `/awareness`). Anon SELECT is allowed by RLS on `requests`.
+ * When `eventId` is set, only rows with that `event_id` are counted; otherwise
+ * all rows matching each filter are counted (including `event_id` null).
+ */
+export interface PublicRequestStats {
+  /** Rows where `status` is not `resolved`. */
+  total: number;
+  /** Active requests with `urgency` = critical. */
+  critical: number;
+  /** Active requests with `urgency` = high. */
+  high: number;
+  /** Rows where `status` = pending. */
+  pending: number;
+  lastUpdated: string;
+}
+
+function requestStatsBase(eventId?: string) {
+  let q = supabase.from('requests').select('*', { count: 'exact', head: true });
+  if (eventId) {
+    q = q.eq('event_id', eventId);
+  }
+  return q;
+}
+
+export async function getPublicRequestStats(
+  eventId?: string,
+): Promise<PublicRequestStats | null> {
+  try {
+    const [totalRes, criticalRes, highRes, pendingRes] = await Promise.all([
+      requestStatsBase(eventId).neq('status', 'resolved'),
+      requestStatsBase(eventId).neq('status', 'resolved').eq('urgency', 'critical'),
+      requestStatsBase(eventId).neq('status', 'resolved').eq('urgency', 'high'),
+      requestStatsBase(eventId).eq('status', 'pending'),
+    ]);
+
+    if (totalRes.error || criticalRes.error || highRes.error || pendingRes.error) {
+      console.error('[getPublicRequestStats]', {
+        total: totalRes.error?.message,
+        critical: criticalRes.error?.message,
+        high: highRes.error?.message,
+        pending: pendingRes.error?.message,
+      });
+      return null;
+    }
+
+    return {
+      total: totalRes.count ?? 0,
+      critical: criticalRes.count ?? 0,
+      high: highRes.count ?? 0,
+      pending: pendingRes.count ?? 0,
+      lastUpdated: new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Invokes `onChange` whenever any row in `public.requests` changes.
+ * Use for live counters on the public home page; always remove the channel in cleanup.
+ */
+export function subscribeToPublicRequestsChanges(
+  onChange: () => void,
+  channelSuffix = 'global',
+): () => void {
+  const channel = supabase
+    .channel(`requests-public-stats-${channelSuffix}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'requests' },
+      () => {
+        onChange();
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
 export async function getActiveEvent(): Promise<CrisisEvent | null> {
   try {
     const { data, error } = await supabase
@@ -383,30 +476,132 @@ export async function getPublicCrisisStats(eventId?: string): Promise<PublicCris
  * Fetches active (non-resolved) needs with GPS coordinates for the live threat map.
  * Used by the /awareness page; anon SELECT is permitted by RLS.
  */
-export async function getActiveThreats(): Promise<Need[]> {
+/* -------------------------------------------------------------------------- */
+/* Threats (live `requests` table — public emergency submissions)              */
+/* -------------------------------------------------------------------------- */
+
+const REQUEST_URGENCY_VALUES: HelpRequestUrgency[] = [
+  'low',
+  'medium',
+  'high',
+  'critical',
+];
+
+const REQUEST_STATUS_VALUES: NeedStatus[] = [
+  'pending',
+  'assigned',
+  'in_progress',
+  'resolved',
+];
+
+const REQUEST_NEED_TYPES: NeedType[] = [
+  'food',
+  'medical',
+  'rescue',
+  'shelter',
+  'other',
+];
+
+/**
+ * Parses a row from `public.requests` into a `RequestRow`. Returns null when
+ * required fields are missing or contain invalid enum values, so the
+ * threat map only ever sees structurally valid records.
+ */
+function parseRequestRow(value: unknown): RequestRow | null {
+  if (!isRecord(value)) return null;
+
+  const id = readString(value, 'id');
+  const createdAt = readString(value, 'created_at');
+  const name = readString(value, 'name');
+  const contact = readString(value, 'contact');
+  const needType = readString(value, 'need_type');
+  const locationText = readString(value, 'location_text');
+  const description = readString(value, 'description');
+  const urgency = readString(value, 'urgency');
+  const status = readString(value, 'status');
+  const lat = readNumber(value, 'lat');
+  const lng = readNumber(value, 'lng');
+
+  if (
+    !id ||
+    !createdAt ||
+    !name ||
+    !contact ||
+    !needType ||
+    !locationText ||
+    !description ||
+    !urgency ||
+    !status ||
+    lat === null ||
+    lng === null
+  ) {
+    return null;
+  }
+
+  if (!REQUEST_NEED_TYPES.includes(needType as NeedType)) return null;
+  if (!REQUEST_URGENCY_VALUES.includes(urgency as HelpRequestUrgency)) return null;
+  if (!REQUEST_STATUS_VALUES.includes(status as NeedStatus)) return null;
+
+  const eventId = readString(value, 'event_id');
+
+  return {
+    id,
+    created_at: createdAt,
+    name,
+    contact,
+    need_type: needType as NeedType,
+    location_text: locationText,
+    lat,
+    lng,
+    description,
+    urgency: urgency as HelpRequestUrgency,
+    status: status as NeedStatus,
+    event_id: eventId ?? undefined,
+  };
+}
+
+/**
+ * Live threat map source of truth. Reads non-resolved rows from the public
+ * `requests` table — the same data the AI threats Netlify function operates
+ * on. Used as a fast fallback when the AI enrichment fails or while we wait
+ * for the AI call to return.
+ */
+export async function getActiveRequests(): Promise<Threat[]> {
   try {
     const { data, error } = await supabase
-      .from('needs')
-      .select('*')
+      .from('requests')
+      .select(
+        'id, created_at, name, contact, need_type, location_text, lat, lng, description, urgency, status, event_id',
+      )
       .neq('status', 'resolved')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
 
     if (error) {
-      console.error('[getActiveThreats]', error.message);
+      console.error('[getActiveRequests]', error.message);
       return [];
     }
 
     if (!Array.isArray(data)) return [];
 
-    const out: Need[] = [];
+    const out: Threat[] = [];
     for (const row of data) {
-      const parsed = parseNeedRecord(row);
+      const parsed = parseRequestRow(row);
       if (parsed) out.push(parsed);
     }
     return out;
-  } catch {
+  } catch (err) {
+    console.error('[getActiveRequests] threw', err);
     return [];
   }
+}
+
+/**
+ * Legacy alias kept so any older callers compile. Now reads from `requests`.
+ * Prefer `getActiveRequests` for the explicit `Threat[]` return shape.
+ */
+export async function getActiveThreats(): Promise<Threat[]> {
+  return getActiveRequests();
 }
 
 export interface NeedTrackingInfo {

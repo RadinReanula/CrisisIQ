@@ -302,24 +302,35 @@ export function VolunteerRegistrationForm() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
+        const freshLat = position.coords.latitude;
+        const freshLng = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
+        const accStr = accuracy < 100
+          ? `±${Math.round(accuracy)}m`
+          : `±${(accuracy / 1000).toFixed(1)}km`;
+
         setFormState((prev) => ({
           ...prev,
-          lat,
-          lng,
-          locationText: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+          lat: freshLat,
+          lng: freshLng,
+          locationText: `GPS ${freshLat.toFixed(5)}, ${freshLng.toFixed(5)} (${accStr})`,
         }));
         setLocationLoading(false);
       },
-      () => {
+      (err) => {
         setLocationLoading(false);
+        const message =
+          err.code === err.PERMISSION_DENIED
+            ? 'Location permission denied. Allow it in browser settings, or switch to manual entry.'
+            : err.code === err.TIMEOUT
+              ? 'GPS timed out. Move near a window for better signal, or try again.'
+              : 'Could not get GPS location. Try again or switch to manual.';
         setFieldErrors((prev) => ({
           ...prev,
-          location: 'Could not get GPS location. Try again.',
+          location: message,
         }));
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   }, []);
 
@@ -845,29 +856,45 @@ export function VolunteerRegistrationForm() {
                 {locationMode === 'gps' ? (
                   <div role="tabpanel" className="space-y-2">
                     <div className="flex gap-2">
-                  <input
-                    id={`${baseId}-location`}
-                    type="text"
-                    readOnly
-                    value={formState.locationText}
-                    placeholder="Tap Use GPS to capture coordinates"
-                    className={`${inputClass} min-w-0 flex-1`}
-                    aria-invalid={Boolean(fieldErrors.location)}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleUseGps}
-                    disabled={isSubmitting || locationLoading}
-                    className="flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-600 bg-slate-700 px-3 py-3 text-sm font-medium text-cyan-400 transition-all duration-300 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <MapPinIcon />
-                    <span className="hidden sm:inline">
-                      {locationLoading ? 'GPS…' : 'Use GPS'}
-                    </span>
-                  </button>
+                      <input
+                        id={`${baseId}-location`}
+                        type="text"
+                        readOnly
+                        value={formState.locationText}
+                        placeholder="Tap Use GPS to capture coordinates"
+                        className={`${inputClass} min-w-0 flex-1`}
+                        aria-invalid={Boolean(fieldErrors.location)}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleUseGps}
+                        disabled={isSubmitting || locationLoading}
+                        className="flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-600 bg-slate-700 px-3 py-3 text-sm font-medium text-cyan-400 transition-all duration-300 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <MapPinIcon />
+                        <span className="hidden sm:inline">
+                          {locationLoading ? 'GPS…' : 'Use GPS'}
+                        </span>
+                      </button>
                     </div>
+                    {formState.lat !== null && formState.lng !== null && (
+                      <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-950/20 px-3 py-2 text-xs text-green-300">
+                        <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-green-400" />
+                        <span className="font-mono">
+                          {formState.lat.toFixed(5)}, {formState.lng.toFixed(5)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleUseGps}
+                          disabled={locationLoading}
+                          className="ml-auto text-[11px] font-medium text-green-400 underline-offset-2 hover:underline disabled:opacity-50"
+                        >
+                          Refresh
+                        </button>
+                      </div>
+                    )}
                     <p className="text-xs text-slate-500">
-                      Allow location access when prompted for accurate map placement.
+                      Allow location access when prompted. Tap again to get a fresh GPS reading.
                     </p>
                   </div>
                 ) : (

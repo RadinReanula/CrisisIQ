@@ -2,8 +2,10 @@ import { useEffect, useMemo } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { Need } from '../../types';
+import type { Threat } from '../../types';
 import {
+  CATEGORY_LABEL,
+  CATEGORY_PILL_CLASS,
   classifyUrgency,
   NEED_TYPE_LABEL,
   SRI_LANKA_CENTER,
@@ -14,7 +16,7 @@ import {
 import './threatMap.css';
 
 interface ThreatMapProps {
-  threats: Need[];
+  threats: Threat[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 }
@@ -43,14 +45,14 @@ function getMarkerIcon(urgency: ThreatUrgencyLabel, isSelected: boolean): L.DivI
 }
 
 /**
- * Pans the map to the selected threat whenever the selection or threat list changes.
- * Must be a child of MapContainer so useMap() resolves.
+ * Pans the map to the selected threat whenever the selection or threat list
+ * changes. Must be a child of `MapContainer` so `useMap()` resolves.
  */
 function FlyToSelected({
   threats,
   selectedId,
 }: {
-  threats: Need[];
+  threats: Threat[];
   selectedId: string | null;
 }) {
   const map = useMap();
@@ -68,7 +70,6 @@ function FlyToSelected({
 }
 
 export function ThreatMap({ threats, selectedId, onSelect }: ThreatMapProps) {
-  // Memoize so changing selection doesn't recompute the marker list.
   const markers = useMemo(
     () =>
       threats.map((threat) => {
@@ -100,36 +101,55 @@ export function ThreatMap({ threats, selectedId, onSelect }: ThreatMapProps) {
           subdomains={['a', 'b', 'c', 'd']}
         />
 
-        {markers.map(({ threat, urgency, icon }) => (
-          <Marker
-            key={threat.id}
-            position={[threat.lat, threat.lng]}
-            icon={icon}
-            eventHandlers={{
-              click: () => onSelect(threat.id),
-            }}
-          >
-            <Popup>
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${URGENCY_BADGE_CLASS[urgency]}`}
-                  >
-                    {urgency}
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    {NEED_TYPE_LABEL[threat.need_type]}
-                  </span>
+        {markers.map(({ threat, urgency, icon }) => {
+          const aiCategory = threat.ai?.ai_category;
+          return (
+            <Marker
+              key={threat.id}
+              position={[threat.lat, threat.lng]}
+              icon={icon}
+              eventHandlers={{
+                click: () => onSelect(threat.id),
+              }}
+            >
+              <Popup>
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${URGENCY_BADGE_CLASS[urgency]}`}
+                    >
+                      {urgency}
+                    </span>
+                    {aiCategory && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${CATEGORY_PILL_CLASS[aiCategory]}`}
+                      >
+                        {CATEGORY_LABEL[aiCategory]}
+                      </span>
+                    )}
+                    {!aiCategory && (
+                      <span className="text-xs text-slate-400">
+                        {NEED_TYPE_LABEL[threat.need_type]}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold text-white">{threat.name}</p>
+                  <p className="text-xs text-slate-300 line-clamp-3">
+                    {threat.ai?.ai_summary ?? threat.description}
+                  </p>
+                  {threat.location_text && (
+                    <p className="text-[11px] text-slate-400">
+                      {threat.location_text}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-slate-500">
+                    {threat.lat.toFixed(4)}, {threat.lng.toFixed(4)}
+                  </p>
                 </div>
-                <p className="text-sm font-semibold text-white">{threat.submitter_name}</p>
-                <p className="text-xs text-slate-300 line-clamp-3">{threat.description}</p>
-                <p className="text-[10px] text-slate-500">
-                  {threat.lat.toFixed(4)}, {threat.lng.toFixed(4)}
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+              </Popup>
+            </Marker>
+          );
+        })}
 
         <FlyToSelected threats={threats} selectedId={selectedId} />
       </MapContainer>

@@ -121,22 +121,41 @@ export function NeedSubmissionForm({
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLat(position.coords.latitude);
-        setLng(position.coords.longitude);
+        const newLat = position.coords.latitude;
+        const newLng = position.coords.longitude;
+        setLat(newLat);
+        setLng(newLng);
         setLocationLoading(false);
-        setLocationMessage('GPS location captured.');
+
+        const coordStr = `${newLat.toFixed(5)}, ${newLng.toFixed(5)}`;
+        const accuracy = position.coords.accuracy;
+        const accStr = accuracy < 100
+          ? `±${Math.round(accuracy)}m`
+          : `±${(accuracy / 1000).toFixed(1)}km`;
+
+        if (!locationText.trim()) {
+          setLocationText(coordStr);
+        }
+        setLocationMessage(`GPS captured: ${coordStr} (${accStr}). Update the area description above if needed.`);
+        setFieldErrors((prev) => {
+          const next = { ...prev };
+          delete next.location;
+          return next;
+        });
       },
       (err) => {
         setLocationLoading(false);
         const message =
           err.code === err.PERMISSION_DENIED
             ? 'Location denied. Switch to manual location or describe your area below.'
-            : 'Could not get GPS. Try manual location.';
+            : err.code === err.TIMEOUT
+              ? 'GPS timed out. Try again or switch to manual.'
+              : 'Could not get GPS. Try manual location.';
         setLocationMessage(message);
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
-  }, []);
+  }, [locationText]);
 
   const validateStep1 = useCallback((): boolean => {
     const errors: Record<string, string> = {};
@@ -359,6 +378,20 @@ export function NeedSubmissionForm({
               </>
             )}
 
+            {lat !== null && lng !== null && locationMode === 'gps' && (
+              <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-950/20 px-3 py-2 text-xs text-green-300">
+                <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-green-400" />
+                <span className="font-mono">{lat.toFixed(5)}, {lng.toFixed(5)}</span>
+                <button
+                  type="button"
+                  onClick={handleUseLocation}
+                  disabled={locationLoading}
+                  className="ml-auto text-[11px] font-medium text-green-400 underline-offset-2 hover:underline disabled:opacity-50"
+                >
+                  Refresh
+                </button>
+              </div>
+            )}
             {fieldErrors.locationText && (
               <p className={errorClass}>{fieldErrors.locationText}</p>
             )}

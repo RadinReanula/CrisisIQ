@@ -3,11 +3,10 @@ const { createClient } = require("@supabase/supabase-js");
 let cachedClient = null;
 
 /**
- * Server-side Supabase client. Uses the service role key so the Netlify
- * function can read tables regardless of RLS, but the same code would also
- * work with the anon key because help_requests + needs already grant anon
- * SELECT. Both env vars are required server-side and must NEVER be exposed
- * to the browser.
+ * Server-side Supabase client. Uses the service role key when available,
+ * otherwise falls back to the anon key (which works because `requests`,
+ * `help_requests`, and `needs` all grant anon SELECT). NEVER expose
+ * either key to the browser.
  */
 function getSupabaseAdmin() {
   if (cachedClient) return cachedClient;
@@ -72,8 +71,57 @@ async function fetchRecentNeeds({ limit = 15, windowHours = 48 } = {}) {
   }
 }
 
+/**
+ * Returns the public `requests` table rows — this is the canonical source
+ * of all emergency submissions used by the live threat map and AI news.
+ *
+ * Options:
+ *  - `limit`         max rows to return (default 60).
+ *  - `windowHours`   only include rows newer than this many hours; pass
+ *                    `null` to disable the time filter entirely.
+ *  - `includeResolved` when false (default), `status === 'resolved'` rows
+ *                    are excluded.
+ */
+async function fetchRecentRequests({
+  limit = 60,
+  windowHours = 72,
+  includeResolved = false,
+} = {}) {
+  try {
+    const client = getSupabaseAdmin();
+    let query = client
+      .from("requests")
+      .select(
+        "id, created_at, name, contact, need_type, location_text, lat, lng, description, urgency, status, event_id",
+      )
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (!includeResolved) {
+      query = query.neq("status", "resolved");
+    }
+    if (typeof windowHours === "number" && Number.isFinite(windowHours)) {
+      const since = new Date(
+        Date.now() - windowHours * 3600 * 1000,
+      ).toISOString();
+      query = query.gte("created_at", since);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("[fetchRecentRequests]", error.message);
+      return [];
+    }
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error("[fetchRecentRequests] threw", err);
+    return [];
+  }
+}
+
 module.exports = {
   getSupabaseAdmin,
   fetchRecentHelpRequests,
   fetchRecentNeeds,
+  fetchRecentRequests,
 };

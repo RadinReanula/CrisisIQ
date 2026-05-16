@@ -10,10 +10,7 @@ const {
   fetchUsgs,
   fetchReliefWeb,
 } = require("./utils/feeds");
-const {
-  fetchRecentHelpRequests,
-  fetchRecentNeeds,
-} = require("./utils/supabaseAdmin");
+const { fetchRecentRequests } = require("./utils/supabaseAdmin");
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const CACHE_KEY = "ai-news:v1";
@@ -73,21 +70,18 @@ function urgencyTextToLevel(urgency) {
   return undefined;
 }
 
-function urgencyNumberToLevel(score) {
-  if (typeof score !== "number") return undefined;
-  if (score >= 5) return "critical";
-  if (score >= 4) return "high";
-  if (score === 3) return "medium";
-  return "low";
-}
-
-function buildCrisisIqRaw(helpRequests, needs) {
+/**
+ * Builds CrisisIQ raw items from the public `requests` table. This is the
+ * canonical source of all emergency submissions and the same table the
+ * live threat map renders from.
+ */
+function buildCrisisIqRaw(requests) {
   const out = [];
-  for (const row of helpRequests) {
+  for (const row of requests) {
     out.push({
       source: "crisisiq",
-      external_id: `help-${row.id}`,
-      title: `${row.submitter_name} needs ${row.need_type}`,
+      external_id: `req-${row.id}`,
+      title: `${row.name} needs ${row.need_type}`,
       body: row.description,
       region: row.location_text,
       lat: row.lat,
@@ -95,22 +89,6 @@ function buildCrisisIqRaw(helpRequests, needs) {
       occurred_at: row.created_at,
       disaster_type: row.need_type,
       severity_hint: urgencyTextToLevel(row.urgency) || "medium",
-    });
-  }
-  for (const row of needs) {
-    out.push({
-      source: "crisisiq",
-      external_id: `need-${row.id}`,
-      title: `${row.submitter_name} (${row.need_type}) — ${row.status}`,
-      body: row.ai_brief || row.description,
-      lat: row.lat,
-      lng: row.lng,
-      occurred_at: row.created_at,
-      disaster_type: row.need_type,
-      severity_hint:
-        urgencyNumberToLevel(row.urgency_ai) ||
-        urgencyNumberToLevel(row.urgency_self) ||
-        "medium",
     });
   }
   return out;
@@ -192,16 +170,15 @@ function dedupeItems(items) {
 }
 
 async function gatherRawData() {
-  const [helpRequests, needs, gdacs, usgs, reliefweb] = await Promise.all([
-    fetchRecentHelpRequests({ limit: 12, windowHours: 48 }),
-    fetchRecentNeeds({ limit: 12, windowHours: 48 }),
+  const [requests, gdacs, usgs, reliefweb] = await Promise.all([
+    fetchRecentRequests({ limit: 20, windowHours: 72 }),
     fetchGdacs(12),
     fetchUsgs(12),
     fetchReliefWeb(8),
   ]);
 
   return {
-    crisisiq: buildCrisisIqRaw(helpRequests, needs),
+    crisisiq: buildCrisisIqRaw(requests),
     external: [...gdacs, ...usgs, ...reliefweb],
   };
 }
