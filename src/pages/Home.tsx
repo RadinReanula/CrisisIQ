@@ -534,10 +534,8 @@ function Home() {
       <PublicPageShell>
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <header className="pb-4 pt-2 text-center sm:pt-4">
-          <CrisisIqBrandMark variant="hero" />
-          <h1 className="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-            CrisisIQ
-          </h1>
+          <h1 className="sr-only">CrisisIQ</h1>
+          <CrisisIqBrandMark variant="hero" className="mx-auto" />
           <div
             className="crisis-title-underline mx-auto mt-3 h-1 w-32 rounded-full bg-red-500"
             aria-hidden

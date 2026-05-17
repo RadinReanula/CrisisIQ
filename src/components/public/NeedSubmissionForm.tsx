@@ -6,6 +6,7 @@ import type {
   NeedSubmissionPayload,
   NeedType,
 } from '../../types';
+import { CrisisIqBrandMark } from '../brand/CrisisIqBrandMark';
 import { LoadingSpinner } from './LoadingSpinner';
 
 export type { NeedSubmissionPayload } from '../../types';
@@ -220,8 +221,8 @@ export function NeedSubmissionForm({
           <span aria-hidden>←</span>
           <span className="hidden sm:inline">Back</span>
         </button>
-        <span className="absolute left-1/2 -translate-x-1/2 text-lg font-bold text-red-500">
-          CrisisIQ
+        <span className="absolute left-1/2 -translate-x-1/2">
+          <CrisisIqBrandMark variant="inline" />
         </span>
         <span className="text-xs font-medium text-slate-500">
           Step {step} of 3
