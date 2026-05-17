@@ -1,3 +1,5 @@
+import { CrisisIqBrandMark } from '../brand/CrisisIqBrandMark';
+
 interface VolunteerTopBarProps {
   authDisplayName: string | null;
   available: boolean;
@@ -17,7 +19,7 @@ export function VolunteerTopBar({
     <header className="sticky top-0 z-20 border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="text-lg font-bold text-red-500">CrisisIQ</span>
+          <CrisisIqBrandMark variant="nav" />
           <span className="hidden text-sm text-slate-400 sm:inline">
             Volunteer Portal
           </span>

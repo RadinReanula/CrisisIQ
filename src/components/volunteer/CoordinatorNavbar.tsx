@@ -14,7 +14,6 @@ export function CoordinatorNavbar({
       <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <CrisisIqBrandMark variant="nav" />
-          <span className="text-lg font-bold text-white">CrisisIQ</span>
           <span className="hidden items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-400 sm:inline-flex">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" aria-hidden />
             LIVE

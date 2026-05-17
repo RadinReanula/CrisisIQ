@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/useAppContext';
+import { CrisisIqBrandMark } from '../components/brand/CrisisIqBrandMark';
 import { supabase } from '../services/supabase';
 
 /**
@@ -89,9 +90,9 @@ export default function CoordinatorLogin() {
   return (
     <main className="min-h-screen bg-[var(--color-bg-dark)] px-4 py-16 font-sans text-[var(--color-text-inverse)]">
       <div className="mx-auto max-w-md">
-        <p className="mb-2 text-center text-xs uppercase tracking-widest text-cyan-400">
-          CrisisIQ
-        </p>
+        <div className="mb-4 flex justify-center">
+          <CrisisIqBrandMark variant="hero" />
+        </div>
         <h1 className="text-center text-xl font-bold">Coordinator sign in</h1>
         <p className="mt-2 text-center text-sm text-slate-400">
           Use the coordinator account from your Supabase project (role metadata: coordinator).

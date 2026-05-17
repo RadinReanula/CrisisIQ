@@ -6,6 +6,7 @@ import {
 } from '../../auth/volunteerPassword';
 import { ensureAuthSessionForUser } from '../../auth/ensureAuthSession';
 import { supabase } from '../../services/supabase';
+import { CrisisIqBrandMark } from '../brand/CrisisIqBrandMark';
 import { LoadingSpinner } from './LoadingSpinner';
 import {
   SKILL_OPTIONS,
@@ -615,8 +616,8 @@ export function VolunteerRegistrationForm() {
           <span aria-hidden>←</span>
           <span className="hidden sm:inline">Back</span>
         </button>
-        <span className="absolute left-1/2 -translate-x-1/2 text-lg font-bold text-cyan-400">
-          CrisisIQ
+        <span className="absolute left-1/2 -translate-x-1/2">
+          <CrisisIqBrandMark variant="inline" />
         </span>
         <span className="w-12" aria-hidden />
       </header>
