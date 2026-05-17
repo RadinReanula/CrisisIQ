@@ -382,10 +382,6 @@ function AboutSection() {
             counts. Our system ensures that no request goes unnoticed and no volunteer goes
             unguided.
           </p>
-          <p className="mt-4 text-sm leading-relaxed text-slate-400">
-            Built by a team of students at NSBM Green University for the NSBM Buildathon 2025 Ã¢â‚¬â€
-            because technology should serve humanity when it matters most.
-          </p>
         </div>
         <div className="space-y-3">
           {tiles.map((tile) => (

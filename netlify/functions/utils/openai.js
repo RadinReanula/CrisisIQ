@@ -85,6 +85,45 @@ async function callOpenAi(systemPrompt, userPrompt, opts = {}) {
 }
 
 /**
+ * Calls OpenAI Chat Completions with a system prompt plus a multi-turn
+ * conversation history. Used by the in-app assistant where multi-turn
+ * context matters.
+ *
+ * @param {string} systemPrompt
+ * @param {Array<{ role: 'user'|'assistant', content: string }>} history
+ * @param {{ json?: boolean, model?: string, maxTokens?: number }} [opts]
+ * @returns {Promise<string>} Raw assistant text content.
+ */
+async function callOpenAiChat(systemPrompt, history, opts = {}) {
+  const { json = false, model = DEFAULT_MODEL, maxTokens } = opts;
+  const client = getClient();
+
+  const messages = [{ role: "system", content: systemPrompt }];
+  for (const turn of history) {
+    if (
+      turn &&
+      typeof turn.content === "string" &&
+      (turn.role === "user" || turn.role === "assistant")
+    ) {
+      messages.push({ role: turn.role, content: turn.content });
+    }
+  }
+
+  const completion = await client.chat.completions.create({
+    model,
+    response_format: json ? { type: "json_object" } : undefined,
+    max_tokens: maxTokens,
+    messages,
+  });
+
+  const content = completion.choices?.[0]?.message?.content;
+  if (typeof content !== "string" || content.length === 0) {
+    throw new Error("OpenAI returned an empty response");
+  }
+  return content;
+}
+
+/**
  * Calls the Responses API with the web_search_preview tool enabled.
  * Returns the consolidated output text (model's final message).
  * @param {string} systemPrompt
@@ -140,6 +179,7 @@ function parseJsonResponse(text) {
 
 module.exports = {
   callOpenAi,
+  callOpenAiChat,
   callOpenAiWithWebSearch,
   parseJsonResponse,
   corsHeaders,

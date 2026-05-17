@@ -227,3 +227,41 @@ export interface AiThreatsResponse {
   generated_at: string;
   next_refresh_at: string;
 }
+
+/* ------------------------------------------------------------------ */
+/* AI Chat Assistant (CrisisIQ Assistant)                              */
+/* ------------------------------------------------------------------ */
+
+/** Roles the in-app assistant tracks per turn. */
+export type ChatRole = 'user' | 'assistant';
+
+/**
+ * A single turn in the in-app assistant conversation. `id` is a client
+ * generated stable key, `createdAt` is an ISO timestamp.
+ */
+export interface ChatMessage {
+  id: string;
+  role: ChatRole;
+  content: string;
+  createdAt: string;
+}
+
+/**
+ * Optional hints the client sends to the server so the assistant can
+ * tailor replies (current page, active event, signed-in role,
+ * specific request the user is asking about).
+ */
+export interface ChatContextHint {
+  page?: string;
+  eventId?: string;
+  eventName?: string;
+  requestId?: string;
+  role?: 'citizen' | 'volunteer' | 'coordinator';
+}
+
+/** Response shape from `/.netlify/functions/ai-chat`. */
+export interface ChatReply {
+  reply: string;
+  used_live_data: boolean;
+  suggestions?: string[];
+}

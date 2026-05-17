@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { CrisisChatLauncher } from '../chat/CrisisChatLauncher';
 import { EmergencyBar } from './EmergencyBar';
 
 /** Top padding matches fixed emergency bar height. */
@@ -14,6 +15,7 @@ export function PublicPageShell({ children, className = '' }: PublicPageShellPro
     <>
       <EmergencyBar />
       <div className={`${PUBLIC_PAGE_TOP} ${className}`}>{children}</div>
+      <CrisisChatLauncher />
     </>
   );
 }
